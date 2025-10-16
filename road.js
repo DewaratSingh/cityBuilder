@@ -48,6 +48,11 @@ class Segment {
       this.endingPosition.y + camera.y
     );
     ctx.stroke();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 }
 //--------------------------------------------------------------------------------------------------------------------------------------------------
@@ -64,6 +69,22 @@ class Road {
     for (const base of this.roadBases) {
       const d = distance(x, y, base.position.x, base.position.y);
       if (d < base.width / 2) {
+        let index = [];
+        for (let i = 0; i < this.segments.length; i++) {
+          if (
+            this.segments[i].startingPosition.x == base.position.x &&
+            this.segments[i].startingPosition.x == base.position.y
+          ) {
+            this.segments[i].previousSegments.push(this.segments.length);
+            break;
+          } else if (
+            this.segments[i].endingPosition.x == base.position.x &&
+            this.segments[i].endingPosition.x == base.position.y
+          ) {
+            this.segments[i].nextSegments.push(this.segments.length);
+            break;
+          }
+        }
         newSegment = new Segment(base.position.x, base.position.y, color, w);
         this.segments.push(newSegment);
         break;
@@ -142,8 +163,8 @@ class Road {
       this.segments.forEach((segment) => segment.draw(ctx, camera));
       this.roadBases.forEach((base) => base.draw(ctx, camera, "blue"));
     } else {
-      this.roadBases.forEach((base) => base.draw(ctx, camera));
       this.segments.forEach((segment) => segment.draw(ctx, camera));
+      this.roadBases.forEach((base) => base.draw(ctx, camera));
     }
   }
 }
