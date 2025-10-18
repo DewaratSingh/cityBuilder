@@ -7,11 +7,7 @@ class RoadBase {
 
   draw(ctx, camera, color) {
     ctx.beginPath();
-    if (color) {
-      ctx.fillStyle = color;
-    } else {
-      ctx.fillStyle = this.color;
-    }
+    ctx.fillStyle = color || this.color;
     ctx.arc(
       this.position.x + camera.x,
       this.position.y + camera.y,
@@ -22,6 +18,7 @@ class RoadBase {
     ctx.fill();
   }
 }
+
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
 class Segment {
@@ -33,6 +30,7 @@ class Segment {
     this.endingPosition = { x: ex, y: ey };
     this.nextSegments = [];
     this.previousSegments = [];
+    this.vector;
   }
 
   draw(ctx, camera) {
@@ -48,19 +46,47 @@ class Segment {
       this.endingPosition.y + camera.y
     );
     ctx.stroke();
+    const dx = this.endingPosition.x - this.startingPosition.x;
+    const dy = this.endingPosition.y - this.startingPosition.y;
+    const angle = Math.atan2(dy, dx);
+
+    this.drawArrow(
+      ctx,
+      this.startingPosition.x + camera.x,
+      this.startingPosition.y + camera.y,
+      50,
+      angle
+    );
+  }
+
+  drawArrow(ctx, x, y, length = 100, angle = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.beginPath();
     ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 5]);
+    ctx.lineWidth = 5;
+    ctx.moveTo(0, 0);
+    ctx.lineTo(length - 5, 0);
     ctx.stroke();
-    ctx.setLineDash([]);
+    const headSize = 15;
+    ctx.beginPath();
+    ctx.moveTo(length, 0);
+    ctx.lineTo(length - headSize, headSize / 2);
+    ctx.lineTo(length - headSize, -headSize / 2);
+    ctx.closePath();
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.restore();
   }
 }
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 class Road {
   constructor() {
     this.segments = [];
-    this.roadBases = [new RoadBase(0, 0)];
+    this.roadBases = [];
     this.changeable = false;
+    this.base = new RoadBase(-50, -50, "skyblue", 50);
   }
 
   createStartSegment(x, y, w = 50, color = "grey") {
@@ -121,6 +147,13 @@ class Road {
         x: D.x,
         y: D.y,
       };
+      this.segments[this.segments.length - 1].vector = Vector.sub(
+        createVector(D.x, D.y),
+        createVector(
+          this.segments[this.segments.length - 1].startingPosition.x,
+          this.segments[this.segments.length - 1].startingPosition.y
+        )
+      );
       const base = new RoadBase(D.x, D.y, color, w);
       this.roadBases.push(base);
       this.createStartSegment(D.x, D.y);
@@ -134,12 +167,26 @@ class Road {
             x: base.position.x,
             y: base.position.y,
           };
+          this.segments[this.segments.length - 1].vector = Vector.sub(
+            createVector(base.position.x, base.position.y),
+            createVector(
+              this.segments[this.segments.length - 1].startingPosition.x,
+              this.segments[this.segments.length - 1].startingPosition.y
+            )
+          );
           found = true;
           break;
         }
       }
       if (!found) {
         this.segments[this.segments.length - 1].endingPosition = { x, y };
+        this.segments[this.segments.length - 1].vector = Vector.sub(
+          createVector(x, y),
+          createVector(
+            this.segments[this.segments.length - 1].startingPosition.x,
+            this.segments[this.segments.length - 1].startingPosition.y
+          )
+        );
         const base = new RoadBase(x, y, color, w);
         this.roadBases.push(base);
       }
@@ -158,8 +205,11 @@ class Road {
     this.roadBases.splice(index, 1);
   }
 
-  draw(ctx, camera, edit) {
-    if (edit) {
+  draw(ctx, camera, edit, { x, y }) {
+    if (edit=="road") {
+      this.base.position.x = x;
+      this.base.position.y = y;
+      this.base.draw(ctx, camera);
       this.segments.forEach((segment) => segment.draw(ctx, camera));
       this.roadBases.forEach((base) => base.draw(ctx, camera, "blue"));
     } else {
