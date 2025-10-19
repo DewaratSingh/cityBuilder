@@ -5,13 +5,13 @@ class RoadBase {
     this.position = { x, y };
   }
 
-  draw(ctx, camera, color) {
+  draw(ctx, camera, color, editWidth) {
     ctx.beginPath();
     ctx.fillStyle = color || this.color;
     ctx.arc(
       this.position.x + camera.x,
       this.position.y + camera.y,
-      this.width / 2,
+      editWidth / 2 || this.width / 2,
       0,
       Math.PI * 2
     );
@@ -46,17 +46,19 @@ class Segment {
       this.endingPosition.y + camera.y
     );
     ctx.stroke();
-    const dx = this.endingPosition.x - this.startingPosition.x;
-    const dy = this.endingPosition.y - this.startingPosition.y;
-    const angle = Math.atan2(dy, dx);
 
-    this.drawArrow(
-      ctx,
-      this.startingPosition.x + camera.x,
-      this.startingPosition.y + camera.y,
-      50,
-      angle
-    );
+    if (this.width == 50) {
+      const dx = this.endingPosition.x - this.startingPosition.x;
+      const dy = this.endingPosition.y - this.startingPosition.y;
+      const angle = Math.atan2(dy, dx);
+      this.drawArrow(
+        ctx,
+        this.startingPosition.x + camera.x,
+        this.startingPosition.y + camera.y,
+        50,
+        angle
+      );
+    }
   }
 
   drawArrow(ctx, x, y, length = 100, angle = 0) {
@@ -81,10 +83,36 @@ class Segment {
   }
 }
 //--------------------------------------------------------------------------------------------------------------------------------------------------
+class AreaZone {
+  constructor(x, y, w, h, a, color = "grey") {
+    this.position = createVector(x, y);
+    this.height = h;
+    this.width = w;
+    this.radius = Math.sqrt(h * h + w * w);
+    this.angle = a;
+    this.color = color;
+  }
+  draw(ctx, camera) {
+    ctx.save();
+    ctx.translate(this.position.x + camera.x, this.position.y + camera.y);
+    ctx.rotate(this.angle);
+    ctx.beginPath();
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 4;
+    ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+    ctx.stroke();
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 class Road {
   constructor() {
     this.segments = [];
     this.roadBases = [];
+    this.areaZone = [];
     this.changeable = false;
     this.base = new RoadBase(-50, -50, "skyblue", 50);
   }
@@ -156,6 +184,7 @@ class Road {
       );
       const base = new RoadBase(D.x, D.y, color, w);
       this.roadBases.push(base);
+      this.createZone();
       this.createStartSegment(D.x, D.y, w, color);
       this.createEndSegment(x, y, w, color);
     } else {
@@ -190,10 +219,46 @@ class Road {
         const base = new RoadBase(x, y, color, w);
         this.roadBases.push(base);
       }
+      this.createZone();
     }
     this.changeable = false;
   }
 
+  createZone() {
+    let length = this.segments.length - 1;
+    let A = createVector(
+      this.segments[length].startingPosition.x,
+      this.segments[length].startingPosition.y
+    );
+    let B = createVector(
+      this.segments[length].endingPosition.x,
+      this.segments[length].endingPosition.y
+    );
+let C = Vector.sub(B, A);
+let Cmag = C.mag();
+C.normalize();
+
+let mag = 25;
+while (mag <= Cmag) {
+  let step = C.copy().mult(mag);
+  let D = Vector.add(A, step);
+  let perpLeft = createVector(-C.y, C.x);
+  perpLeft.setMag(60);
+  let finalPosLeft = Vector.add(D, perpLeft);
+  this.areaZone.push(new AreaZone(finalPosLeft.x, finalPosLeft.y, 50, 50, C.angle()));
+
+  let perpRight = createVector(C.y, -C.x);
+  perpRight.setMag(60);
+  let finalPosRight = Vector.add(D, perpRight);
+  this.areaZone.push(new AreaZone(finalPosRight.x, finalPosRight.y, 50, 50, C.angle()));
+
+  mag += 55;
+}
+
+
+
+    
+  }
   createEndSegmentMove(x, y, w = 50, color = "grey") {
     if (this.segments.length > 0 && this.changeable) {
       this.segments[this.segments.length - 1].endingPosition = { x, y };
@@ -219,17 +284,35 @@ class Road {
     this.segments = [...normal, ...wide];
   }
 
+  pathWayBase() {
+    this.roadBases.forEach((base) => {
+      if (base.width == 25 / 2) {
+        base.width = 1;
+      }
+    });
+  }
+
   draw(ctx, camera, edit, { x, y, w }) {
     if (edit == "Road") {
+      this.segments.forEach((segment) => segment.draw(ctx, camera));
+      this.roadBases.forEach((base) => {
+        if (base.width == 1) {
+          base.width = 25 / 2;
+          base.draw(ctx, camera, "blue");
+        } else {
+          base.draw(ctx, camera, "blue");
+        }
+      });
+      this.areaZone.forEach((zone) => zone.draw(ctx, camera));
+
       this.base.position.x = x;
       this.base.position.y = y;
-      this.base.width = w;
+      this.base.width = w < 25 ? 25 / 2 : w;
       this.base.draw(ctx, camera);
-      this.segments.forEach((segment) => segment.draw(ctx, camera));
-      this.roadBases.forEach((base) => base.draw(ctx, camera, "blue"));
     } else {
       this.segments.forEach((segment) => segment.draw(ctx, camera));
       this.roadBases.forEach((base) => base.draw(ctx, camera));
+      this.areaZone.forEach((zone) => zone.draw(ctx, camera));
     }
   }
 }

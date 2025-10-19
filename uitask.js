@@ -12,12 +12,22 @@ let object = {
       name: "oneway Road",
       img: "./assert/Screenshot 2025-10-19 101745.png",
       width: 50,
-      color: "grey",
+      color: "#656E76",
     },{
-      name: "PathWay",
-      img: "./assert/Screenshot 2025-10-19 101745.png",
+      name: "PathWayRoad",
+      img: "./assert/Screenshot 2025-10-19 131441.png",
       width: 25,
-      color: "white",
+      color: "#A6A9A4",
+    },{
+      name: "RawRoad",
+      img: "./assert/Screenshot 2025-10-19 131504.png",
+      width: 25,
+      color: "#DBB292",
+    },{
+      name: "pathWay",
+      img: "./assert/Screenshot 2025-10-19 131519.png",
+      width: 1,
+      color: "#DBB292",
     },
   ],
 };
@@ -25,6 +35,7 @@ let object = {
 function tabChange(self) {
   Tab = self.innerHTML;
   road.sort()
+  road.pathWayBase()
 
   if (Tab == "Move") {
     document.getElementById("selector").style.height = "55px";
