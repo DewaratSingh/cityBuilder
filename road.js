@@ -156,8 +156,8 @@ class Road {
       );
       const base = new RoadBase(D.x, D.y, color, w);
       this.roadBases.push(base);
-      this.createStartSegment(D.x, D.y);
-      this.createEndSegment(x, y);
+      this.createStartSegment(D.x, D.y, w, color);
+      this.createEndSegment(x, y, w, color);
     } else {
       let found = false;
       for (const base of this.roadBases) {
@@ -205,10 +205,11 @@ class Road {
     this.roadBases.splice(index, 1);
   }
 
-  draw(ctx, camera, edit, { x, y }) {
-    if (edit=="road") {
+  draw(ctx, camera, edit, { x, y, w }) {
+    if (edit == "Road") {
       this.base.position.x = x;
       this.base.position.y = y;
+      this.base.width = w;
       this.base.draw(ctx, camera);
       this.segments.forEach((segment) => segment.draw(ctx, camera));
       this.roadBases.forEach((base) => base.draw(ctx, camera, "blue"));

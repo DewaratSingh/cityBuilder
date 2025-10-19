@@ -5,11 +5,19 @@
   </head>
   <body>
     <canvas id="canvas"></canvas>
-    <select onchange="tabChange(this)">
-      <option value="move">move</option>
-      <option value="road">Road</option>
-      <option value="PutRect">Put Rect</option>
-    </select>
+
+    <div id="selector">
+      <div id="option">
+        <div onclick="tabChange(this)">Move</div>
+        <div onclick="tabChange(this)">Road</div>
+        <div onclick="tabChange(this)">Object</div>
+        <div onclick="tabChange(this)">Trees</div>
+        <div onclick="tabChange(this)">Building</div>
+      </div>
+      <div id="obj" class="your-div">
+      </div>
+    </div>
+    <div id="constructionline"></div>
 
     <script src="uitask.js"></script>
     <script src="vector.js"></script>
@@ -38,26 +46,27 @@
         road.draw(ctx, camera, Tab, {
           x: mousePositionStore.move.x - camera.x,
           y: mousePositionStore.move.y - camera.y,
+          w:selectedRoad.width
         });
         requestAnimationFrame(animation);
       }
       animation();
 
       canvas.addEventListener("mousedown", (e) => {
-        if (Tab == "road") {
-          road.createStartSegment(e.x - camera.x, e.y - camera.y);
+        if (Tab == "Road") {
+          road.createStartSegment(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
         }
         mouseDown = true;
         mousePositionStore.down = { x: e.x, y: e.y };
       });
 
       canvas.addEventListener("mouseup", (e) => {
-        if (Tab == "road") {
-          road.createEndSegment(e.x - camera.x, e.y - camera.y);
+        if (Tab == "Road") {
+          road.createEndSegment(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
         }
         mouseDown = false;
         mousePositionStore.up = { x: e.x, y: e.y };
-        if (Tab == "move") {
+        if (Tab == "Move") {
           camera.x =
             e.x - mousePositionStore.down.x + mousePositionStore.difference.x;
           camera.y =
@@ -70,12 +79,12 @@
       canvas.addEventListener("mousemove", (e) => {
         mousePositionStore.move.x = e.x;
         mousePositionStore.move.y = e.y;
-        if (Tab == "road") {
+        if (Tab == "Road") {
           if (mouseDown) {
-            road.createEndSegmentMove(e.x - camera.x, e.y - camera.y);
+            road.createEndSegmentMove(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
           }
         }
-        if (mouseDown && Tab == "move") {
+        if (mouseDown && Tab == "Move") {
           camera.x =
             e.x - mousePositionStore.down.x + mousePositionStore.difference.x;
           camera.y =
