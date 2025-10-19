@@ -1,5 +1,6 @@
 let Tab = "Move";
 let selectedRoad={}
+let road;
 
 let object = {
   Move: [],
@@ -23,6 +24,7 @@ let object = {
 
 function tabChange(self) {
   Tab = self.innerHTML;
+  road.sort()
 
   if (Tab == "Move") {
     document.getElementById("selector").style.height = "55px";

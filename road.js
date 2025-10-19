@@ -205,6 +205,20 @@ class Road {
     this.roadBases.splice(index, 1);
   }
 
+  sort() {
+    const normal = [];
+    const wide = [];
+    for (let i = 0; i < this.segments.length; i++) {
+      if (this.segments[i].width == 50) {
+        wide.push(this.segments[i]);
+      } else {
+        normal.push(this.segments[i]);
+      }
+    }
+
+    this.segments = [...normal, ...wide];
+  }
+
   draw(ctx, camera, edit, { x, y, w }) {
     if (edit == "Road") {
       this.base.position.x = x;
