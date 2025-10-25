@@ -5,12 +5,12 @@ class RoadBase {
     this.position = { x, y };
   }
 
-  draw(ctx, camera, color, editWidth) {
+  draw(ctx, color, editWidth) {
     ctx.beginPath();
     ctx.fillStyle = color || this.color;
     ctx.arc(
-      this.position.x + camera.x,
-      this.position.y + camera.y,
+      this.position.x,
+      this.position.y,
       editWidth / 2 || this.width / 2,
       0,
       Math.PI * 2
@@ -33,18 +33,12 @@ class Segment {
     this.vector;
   }
 
-  draw(ctx, camera) {
+  draw(ctx) {
     ctx.beginPath();
     ctx.strokeStyle = this.color;
     ctx.lineWidth = this.width;
-    ctx.moveTo(
-      this.startingPosition.x + camera.x,
-      this.startingPosition.y + camera.y
-    );
-    ctx.lineTo(
-      this.endingPosition.x + camera.x,
-      this.endingPosition.y + camera.y
-    );
+    ctx.moveTo(this.startingPosition.x, this.startingPosition.y);
+    ctx.lineTo(this.endingPosition.x, this.endingPosition.y);
     ctx.stroke();
 
     if (this.width == 50) {
@@ -53,8 +47,8 @@ class Segment {
       const angle = Math.atan2(dy, dx);
       this.drawArrow(
         ctx,
-        this.startingPosition.x + camera.x,
-        this.startingPosition.y + camera.y,
+        this.startingPosition.x,
+        this.startingPosition.y,
         50,
         angle
       );
@@ -92,9 +86,9 @@ class AreaZone {
     this.angle = a;
     this.color = color;
   }
-  draw(ctx, camera) {
+  draw(ctx) {
     ctx.save();
-    ctx.translate(this.position.x + camera.x, this.position.y + camera.y);
+    ctx.translate(this.position.x, this.position.y);
     ctx.rotate(this.angle);
     ctx.beginPath();
     ctx.strokeStyle = "red";
@@ -352,27 +346,25 @@ class Road {
     });
   }
 
-  draw(ctx, camera, edit, { x, y, w }) {
-    if (edit == "Road") {
-      this.segments.forEach((segment) => segment.draw(ctx, camera));
+  draw(ctx, { x, y }, edit = true) {
+    if (edit) {
+      this.segments.forEach((segment) => segment.draw(ctx));
       this.roadBases.forEach((base) => {
         if (base.width == 1) {
           base.width = 25 / 2;
-          base.draw(ctx, camera, "blue");
+          base.draw(ctx, "blue");
         } else {
-          base.draw(ctx, camera, "blue");
+          base.draw(ctx, "blue");
         }
       });
-      this.areaZone.forEach((zone) => zone.draw(ctx, camera));
-
-      this.base.position.x = x;
-      this.base.position.y = y;
-      this.base.width = w < 25 ? 25 / 2 : w;
-      this.base.draw(ctx, camera);
+      this.areaZone.forEach((zone) => zone.draw(ctx));
     } else {
-      this.segments.forEach((segment) => segment.draw(ctx, camera));
-      this.roadBases.forEach((base) => base.draw(ctx, camera));
-      this.areaZone.forEach((zone) => zone.draw(ctx, camera));
+      this.segments.forEach((segment) => segment.draw(ctx));
+      this.roadBases.forEach((base) => base.draw(ctx));
+      this.areaZone.forEach((zone) => zone.draw(ctx));
     }
+    this.base.position.x = x;
+    this.base.position.y = y;
+    this.base.draw(ctx);
   }
 }

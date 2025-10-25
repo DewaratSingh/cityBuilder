@@ -14,8 +14,7 @@
         <div onclick="tabChange(this)">Trees</div>
         <div onclick="tabChange(this)">Building</div>
       </div>
-      <div id="obj" class="your-div">
-      </div>
+      <div id="obj" class="your-div"></div>
     </div>
     <div id="constructionline"></div>
 
@@ -30,68 +29,92 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const camera = { x: 0, y: 0 };
-      let mouseDown = false;
-      let mousePositionStore = {
-        down: {},
-        up: {},
+      mouse = {
+        down: { x: 0, y: 0, is: false },
         move: { x: 0, y: 0 },
-        difference: { x: 0, y: 0 },
+        up: { x: 0, y: 0 },
+        zoom: 1,
+        drag: false,
+        offset: { x: 0, y: 0 },
       };
 
-
-
+      let center={x:canvas.width/2,y:canvas.height/2}
+      let Offset = { x: center.x*-1, y: center.y*-1 };
+      
       road = new Road();
 
       function animation() {
+        let offset = {
+          x: Offset.x + mouse.offset.x,
+          y: Offset.y + mouse.offset.y,
+        };
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        road.draw(ctx, camera, Tab, {
-          x: mousePositionStore.move.x - camera.x,
-          y: mousePositionStore.move.y - camera.y,
-          w:selectedRoad.width
-        });
+        ctx.save();
+        ctx.translate(center.x,center.y);
+        ctx.scale(1 / mouse.zoom, 1 / mouse.zoom);
+        ctx.translate(offset.x, offset.y);
+        road.draw(ctx,mouse.move);
+        ctx.restore();
         requestAnimationFrame(animation);
       }
       animation();
 
       canvas.addEventListener("mousedown", (e) => {
-        if (Tab == "Road") {
-          road.createStartSegment(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
-        }
-        mouseDown = true;
-        mousePositionStore.down = { x: e.x, y: e.y };
-      });
-
-      canvas.addEventListener("mouseup", (e) => {
-        if (Tab == "Road") {
-          road.createEndSegment(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
-        }
-        mouseDown = false;
-        mousePositionStore.up = { x: e.x, y: e.y };
-        if (Tab == "Move") {
-          camera.x =
-            e.x - mousePositionStore.down.x + mousePositionStore.difference.x;
-          camera.y =
-            e.y - mousePositionStore.down.y + mousePositionStore.difference.y;
-          mousePositionStore.difference.x = camera.x;
-          mousePositionStore.difference.y = camera.y;
+        if (e.button == 1) {
+          mouse.down = {
+            x: (e.clientX - center.x) * mouse.zoom - Offset.x,
+            y: (e.clientY - center.y) * mouse.zoom - Offset.y,
+          };
+          mouse.drag = true;
+        } else {
+          road.createStartSegment((e.clientX - center.x) * mouse.zoom - Offset.x, (e.clientY - center.y) * mouse.zoom - Offset.y);
+          mouse.down.is = true;
         }
       });
 
       canvas.addEventListener("mousemove", (e) => {
-        mousePositionStore.move.x = e.x;
-        mousePositionStore.move.y = e.y;
-        if (Tab == "Road") {
-          if (mouseDown) {
-            road.createEndSegmentMove(e.x - camera.x, e.y - camera.y,selectedRoad.width,selectedRoad.color);
-          }
+        mouse.move = {
+             x: (e.clientX - center.x) * mouse.zoom - Offset.x,
+            y: (e.clientY - center.y) * mouse.zoom - Offset.y,
+          };
+        if (mouse.down.is) {
+          road.createEndSegmentMove(
+            (e.clientX - center.x) * mouse.zoom - Offset.x, (e.clientY - center.y) * mouse.zoom - Offset.y
+          );
         }
-        if (mouseDown && Tab == "Move") {
-          camera.x =
-            e.x - mousePositionStore.down.x + mousePositionStore.difference.x;
-          camera.y =
-            e.y - mousePositionStore.down.y + mousePositionStore.difference.y;
+        if (mouse.drag) {
+          
+          mouse.offset = {
+            x: mouse.move.x - mouse.down.x,
+            y: mouse.move.y - mouse.down.y,
+          };
         }
+      });
+      canvas.addEventListener("mouseup", (e) => {
+        if (mouse.down.is) {
+          road.createEndSegment((e.clientX - center.x) * mouse.zoom - Offset.x, (e.clientY - center.y) * mouse.zoom - Offset.y);
+          mouse.down.is = false;
+        }
+        if (mouse.drag) {
+          Offset = {
+            x: Offset.x + mouse.offset.x,
+            y: Offset.y + mouse.offset.y,
+          };
+          let zoom=mouse.zoom
+          mouse = {
+            down: { x: 0, y: 0, is: false },
+            move: { x: 0, y: 0 },
+            up: { x: 0, y: 0 },
+            zoom: zoom,
+            drag: false,
+            offset: { x: 0, y: 0 },
+          };
+        }
+      });
+      canvas.addEventListener("mousewheel", (e) => {
+        let dir = Math.sign(e.deltaY);
+        mouse.zoom += dir * 0.1;
+        mouse.zoom = Math.max(1, Math.min(5, mouse.zoom));
       });
     </script>
   </body>
