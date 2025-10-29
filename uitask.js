@@ -1,5 +1,5 @@
 let Tab = "Move";
-let selectedRoad={}
+let selectedRoad = {};
 let road;
 
 let object = {
@@ -10,22 +10,21 @@ let object = {
   Road: [
     {
       name: "oneway Road",
-      img: "./assert/Screenshot 2025-10-19 101745.png",
       width: 50,
       color: "#656E76",
-    },{
+    },
+    {
       name: "PathWayRoad",
-      img: "./assert/Screenshot 2025-10-19 131441.png",
       width: 25,
       color: "#A6A9A4",
-    },{
+    },
+    {
       name: "RawRoad",
-      img: "./assert/Screenshot 2025-10-19 131504.png",
       width: 25,
       color: "#DBB292",
-    },{
+    },
+    {
       name: "pathWay",
-      img: "./assert/Screenshot 2025-10-19 131519.png",
       width: 1,
       color: "#DBB292",
     },
@@ -34,8 +33,8 @@ let object = {
 
 function tabChange(self) {
   Tab = self.innerHTML;
-  road.sort()
-  road.pathWayBase()
+  road.sort();
+  road.pathWayBase();
 
   if (Tab == "Move") {
     document.getElementById("selector").style.height = "55px";
@@ -52,15 +51,14 @@ function tabChange(self) {
 
   let obj = document.getElementById("obj");
   obj.innerHTML = "";
-  object[Tab].forEach((object,i) => {
+  object[Tab].forEach((object, i) => {
     obj.innerHTML += `<div onclick='selectObj(${i})' style="background-image:url('${object.img}');">${object.name}</div>`;
   });
 }
 
-
-function selectObj(i){
-  if(Tab=="Road"){
-    selectedRoad=object[Tab][i]
+function selectObj(i) {
+  if (Tab == "Road") {
+    selectedRoad = object[Tab][i];
   }
-console.log(obj)
+  console.log(obj);
 }
