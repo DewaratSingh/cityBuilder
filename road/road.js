@@ -5,6 +5,7 @@ class Road {
     this.roadBase = [];
     this.base = new Circle(-50, -50, "skyblue", 50);
     this.changeable = false;
+    this.editMode = false;
   }
 
   isalreadyRoad(x, y) {
@@ -42,31 +43,43 @@ class Road {
     return false;
   }
 
-  createStartSegment(x, y, w = 50, color = "grey") {
+  createStartSegment({ x, y }, w = 50, color = "grey") {
     let newSegment = this.isalreadyRoad(x, y);
 
     if (!newSegment) {
       let segment = new Segment({ x, y }, color, w);
       this.segments.push(segment);
-      this.roadBase.push(new Circle(x,y, "grey", 50));
     }
     this.changeable = true;
   }
 
-  createEndSegmentMove(x, y) {
+  createEndSegmentMove({ x, y }) {
     if (this.segments.length > 0 && this.changeable) {
       this.segments[this.segments.length - 1].endingPosition.x = x;
       this.segments[this.segments.length - 1].endingPosition.y = y;
     }
   }
 
-  createEndSegment(x, y) {
+  createEndSegment({ x, y }) {
     const d = distance(
       x,
       y,
       this.segments[this.segments.length - 1].startingPosition.x,
       this.segments[this.segments.length - 1].startingPosition.y
     );
+    if (d < 1) {
+      this.segments.splice(this.segments.length - 1, 1);
+      return;
+    }
+    this.roadBase.push(
+      new Circle(
+        this.segments[this.segments.length - 1].startingPosition.x,
+        this.segments[this.segments.length - 1].startingPosition.y,
+        "grey",
+        50
+      )
+    );
+
     if (d > 250) {
       let A = this.segments[this.segments.length - 1].startingPosition;
 
@@ -78,14 +91,14 @@ class Road {
         D.x,
         D.y
       );
-      this.roadBase.push(new Circle(D.x,D.y, "grey", 50))
+      this.roadBase.push(new Circle(D.x, D.y, "grey", 50));
 
       this.createZone();
-      this.createStartSegment(D.x, D.y);
-      this.createEndSegment(x, y);
+      this.createStartSegment(D);
+      this.createEndSegment({ x, y });
     } else {
       let found = false;
-      for (let i = 0; i < this.segments.length; i++) {
+      for (let i = 0; i < this.segments.length - 1; i++) {
         const segment = this.segments[i];
 
         const d1 = distance(
@@ -122,7 +135,8 @@ class Road {
           x,
           y
         );
-        this.roadBase.push(new Circle(x,y, "grey", 50))
+
+        this.roadBase.push(new Circle(x, y, "grey", 50));
       }
       this.createZone();
     }
@@ -230,16 +244,17 @@ class Road {
   }
 
   draw(ctx, { x, y }, edit = true) {
-    if (edit) {
+    if (this.editMode) {
+      this.segments.forEach((segment) => segment.draw(ctx));
+      this.roadBase.forEach((segment) => segment.draw(ctx, "blue"));
+      this.areaZone.forEach((zone) => zone.draw(ctx));
+      this.base.position.x = x;
+      this.base.position.y = y;
+      this.base.draw(ctx);
+    } else {
       this.segments.forEach((segment) => segment.draw(ctx));
       this.roadBase.forEach((segment) => segment.draw(ctx));
       this.areaZone.forEach((zone) => zone.draw(ctx));
-    } else {
-      this.segments.forEach((segment) => segment.draw(ctx));
-      this.areaZone.forEach((zone) => zone.draw(ctx));
     }
-    this.base.position.x = x;
-    this.base.position.y = y;
-    this.base.draw(ctx);
   }
 }

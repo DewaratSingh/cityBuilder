@@ -33,13 +33,14 @@ let object = {
 
 function tabChange(self) {
   Tab = self.innerHTML;
-  road.sort();
-  road.pathWayBase();
+
 
   if (Tab == "Move") {
+    road.editMode=false
     document.getElementById("selector").style.height = "55px";
     document.getElementById("constructionline").style.display = "none";
   } else {
+    road.editMode=true
     document.getElementById("selector").style.height = "180px";
     document.getElementById("constructionline").style.display = "block";
   }
@@ -60,5 +61,4 @@ function selectObj(i) {
   if (Tab == "Road") {
     selectedRoad = object[Tab][i];
   }
-  console.log(obj);
 }
