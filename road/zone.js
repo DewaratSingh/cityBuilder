@@ -10,6 +10,19 @@ class AreaZone {
     this.color = color;
   }
 
+  static drawZone(zone){
+    if (zone.down) {
+          ctx.beginPath();
+          ctx.fillStyle = object[Tab][object.select].color;
+          ctx.fillRect(
+            zone.start.x,
+            zone.start.y,
+            zone.move.x - zone.start.x,
+            zone.move.y - zone.start.y
+          );
+        }
+  }
+
   draw(ctx, zone) {
 if (Tab === "Zone") {
   const minX = Math.min(zone.start.x, zone.move.x);
@@ -26,7 +39,6 @@ if (Tab === "Zone") {
     this.color = object[Tab][object.select].color;
   }
 }
-
     ctx.save();
     ctx.translate(this.position.x, this.position.y);
     ctx.rotate(this.angle);

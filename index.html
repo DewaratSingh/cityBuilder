@@ -42,16 +42,7 @@
         camera.restore(ctx);
         road.draw(ctx, camera.mouse.move,zone);
 
-        if (zone.down) {
-          ctx.beginPath();
-          ctx.fillStyle = object[Tab][object.select].color;
-          ctx.fillRect(
-            zone.start.x,
-            zone.start.y,
-            zone.move.x - zone.start.x,
-            zone.move.y - zone.start.y
-          );
-        }
+        AreaZone.drawZone(zone)
         requestAnimationFrame(animation);
       }
       animation();
