@@ -8,9 +8,9 @@
 
     <div id="selector">
       <div id="option">
-        <div onclick="tabChange(this)" style="background-color: rgb(112, 149, 39);">Move</div>
+        <div onclick="tabChange(this)">Move</div>
         <div onclick="tabChange(this)">Road</div>
-        <div onclick="tabChange(this)">Object</div>
+        <div onclick="tabChange(this)">Zone</div>
         <div onclick="tabChange(this)">Trees</div>
         <div onclick="tabChange(this)">Building</div>
       </div>
@@ -36,9 +36,22 @@
       road = new Road();
       let camera = new Camera(canvas);
 
+      let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
+
       function animation() {
         camera.restore(ctx);
-        road.draw(ctx, camera.mouse.move);
+        road.draw(ctx, camera.mouse.move,zone);
+
+        if (zone.down) {
+          ctx.beginPath();
+          ctx.fillStyle = object[Tab][object.select].color;
+          ctx.fillRect(
+            zone.start.x,
+            zone.start.y,
+            zone.move.x - zone.start.x,
+            zone.move.y - zone.start.y
+          );
+        }
         requestAnimationFrame(animation);
       }
       animation();
@@ -47,9 +60,7 @@
         camera.mouse.down = camera.getMousePosition(e);
         switch (Tab) {
           case "Move":
-            if (e.button == 1) {
-              camera.mouse.drag = true;
-            }
+            camera.mouse.drag = true;
             camera.mouse.down.is = true;
             break;
           case "Road":
@@ -60,6 +71,11 @@
               road.createStartSegment(camera.getMousePosition(e));
               camera.mouse.down.is = true;
             }
+            break;
+          case "Zone":
+            zone.start = camera.getMousePosition(e);
+            zone.move = camera.getMousePosition(e);
+            zone.down = true;
             break;
         }
       });
@@ -84,6 +100,11 @@
                 x: camera.mouse.move.x - camera.mouse.down.x,
                 y: camera.mouse.move.y - camera.mouse.down.y,
               };
+            }
+            break;
+          case "Zone":
+            if (zone.down) {
+              zone.move = camera.getMousePosition(e);
             }
             break;
         }
@@ -129,6 +150,9 @@
                 offset: { x: 0, y: 0 },
               };
             }
+            break;
+          case "Zone":
+            zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
             break;
         }
       });

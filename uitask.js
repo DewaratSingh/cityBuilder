@@ -1,12 +1,28 @@
 let Tab = "Move";
-let selectedRoad = {};
 let road;
 
 let object = {
+  select:0,
   Move: [],
   Building: [],
   Trees: [],
-  Object: [],
+  Zone: [
+    {
+      name: "Residential",
+      width: 50,
+      color: "rgba(0, 255, 0, 0.3)",
+    },
+    {
+      name: "Comeritial",
+      width: 25,
+      color: "rgba(0, 0, 255, 0.3)",
+    },
+    {
+      name: "industry",
+      width: 25,
+      color: "rgba(255, 0, 0, 0.3)",
+    },
+  ],
   Road: [
     {
       name: "oneway Road",
@@ -34,13 +50,15 @@ let object = {
 function tabChange(self) {
   Tab = self.innerHTML;
 
-
+  if (Tab == "Road") {
+    road.editMode = true;
+  } else {
+    road.editMode = false;
+  }
   if (Tab == "Move") {
-    road.editMode=false
     document.getElementById("selector").style.height = "55px";
     document.getElementById("constructionline").style.display = "none";
   } else {
-    road.editMode=true
     document.getElementById("selector").style.height = "180px";
     document.getElementById("constructionline").style.display = "block";
   }
@@ -52,13 +70,20 @@ function tabChange(self) {
 
   let obj = document.getElementById("obj");
   obj.innerHTML = "";
+
+if (object[Tab].length > 0) {
   object[Tab].forEach((object, i) => {
-    obj.innerHTML += `<div onclick='selectObj(${i})' style="background-image:url('${object.img}');">${object.name}</div>`;
+    obj.innerHTML += `
+      <div onclick="selectObj(${i})" style="background-color: ${object.color};">
+        ${object.name}
+      </div>`;
   });
 }
 
+
+
+}
+
 function selectObj(i) {
-  if (Tab == "Road") {
-    selectedRoad = object[Tab][i];
-  }
+  object.select=i;
 }

@@ -80,12 +80,12 @@ class Road {
       )
     );
 
-    if (d > 250) {
+    if (d > 300) {
       let A = this.segments[this.segments.length - 1].startingPosition;
 
       let B = createVector(x, y);
       let C = Vector.sub(B, A);
-      C.setMag(200);
+      C.setMag(250);
       let D = Vector.add(A, C);
       this.segments[this.segments.length - 1].endingPosition = createVector(
         D.x,
@@ -145,14 +145,9 @@ class Road {
 
   createZone() {
     let length = this.segments.length - 1;
-    let A = createVector(
-      this.segments[length].startingPosition.x,
-      this.segments[length].startingPosition.y
-    );
-    let B = createVector(
-      this.segments[length].endingPosition.x,
-      this.segments[length].endingPosition.y
-    );
+    let A = this.segments[length].startingPosition;
+    let B = this.segments[length].endingPosition;
+
     let C = Vector.sub(B, A);
     let Cmag = C.mag();
     C.normalize();
@@ -162,20 +157,20 @@ class Road {
       let step = C.copy().mult(mag);
       let D = Vector.add(A, step);
       let perpLeft = createVector(-C.y, C.x);
-      perpLeft.setMag(60);
+      perpLeft.setMag(80);
       let finalPosLeft = Vector.add(D, perpLeft);
       this.areaZone.push(
-        new AreaZone(finalPosLeft.x, finalPosLeft.y, 50, 50, C.angle())
+        new AreaZone(finalPosLeft.x, finalPosLeft.y, 100, 100, C.angle())
       );
 
       let perpRight = createVector(C.y, -C.x);
-      perpRight.setMag(60);
+      perpRight.setMag(80);
       let finalPosRight = Vector.add(D, perpRight);
       this.areaZone.push(
-        new AreaZone(finalPosRight.x, finalPosRight.y, 50, 50, C.angle())
+        new AreaZone(finalPosRight.x, finalPosRight.y, 100, 100, C.angle())
       );
 
-      mag += 60; //55
+      mag += 110; //55
     }
     this.zoneDeletor();
   }
@@ -189,7 +184,7 @@ class Road {
           this.areaZone[j].position.x,
           this.areaZone[j].position.y
         );
-        if (d < 50) {
+        if (d < 100) {
           this.areaZone.splice(i, 1);
           break;
         }
@@ -199,7 +194,7 @@ class Road {
     for (let i = this.areaZone.length - 1; i >= 0; i--) {
       const circle = this.areaZone[i];
       const P = circle.position;
-      const r = 50;
+      const r = 70;
 
       let collided = false;
 
@@ -243,18 +238,18 @@ class Road {
     this.roadBases.splice(index, 1);
   }
 
-  draw(ctx, { x, y }, edit = true) {
+  draw(ctx, { x, y }, zone) {
     if (this.editMode) {
       this.segments.forEach((segment) => segment.draw(ctx));
       this.roadBase.forEach((segment) => segment.draw(ctx, "blue"));
-      this.areaZone.forEach((zone) => zone.draw(ctx));
+      this.areaZone.forEach((zone) => zone.draw(ctx,zone));
       this.base.position.x = x;
       this.base.position.y = y;
       this.base.draw(ctx);
     } else {
       this.segments.forEach((segment) => segment.draw(ctx));
       this.roadBase.forEach((segment) => segment.draw(ctx));
-      this.areaZone.forEach((zone) => zone.draw(ctx));
+      this.areaZone.forEach((areazone) => areazone.draw(ctx,zone));
     }
   }
 }
