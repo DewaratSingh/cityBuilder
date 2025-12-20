@@ -1,20 +1,23 @@
 class Circle {
-  constructor(x, y, color = "grey", width = 50) {
+  constructor(x = 0, y = 0, color = "grey", width = 50, mouse) {
     this.color = color;
     this.width = width;
-    this.position = { x, y };
+    this.x = x;
+    this.y = y;
+    this.mouse = mouse;
+    this.segment=[]
   }
 
-  draw(ctx, color) {
+  draw(ctx, color, x, y) {
     ctx.beginPath();
-    ctx.fillStyle = color || this.color;
-    ctx.arc(
-      this.position.x,
-      this.position.y,
-      this.width / 2,
-      0,
-      Math.PI * 2
-    );
+
+    if (x && y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    ctx.fillStyle = this.mouse ? "skyblue" : color || this.color;
+    ctx.arc(x || this.x, y || this.y, this.width / 2, 0, Math.PI * 2);
     ctx.fill();
   }
 }

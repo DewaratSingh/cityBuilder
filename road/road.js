@@ -2,61 +2,56 @@ class Road {
   constructor() {
     this.segments = [];
     this.areaZone = [];
-    this.roadBase = [];
-    this.base = new Circle(-50, -50, "skyblue", 50);
+    this.roadBase = {
+      index: 1,
+      0: new Circle(0, 0, "skyblue", 50, true),
+    };
     this.changeable = false;
     this.editMode = false;
+    //this.loadFromLocalStorage()
+  }
+
+  addNode(x, y, color = "grey", w = 50) {
+    const id = this.roadBase.index++;
+    this.roadBase[id] = new Circle(x, y, color, w);
+    return id;
+  }
+
+  addSegToNode(key, i) {
+    this.roadBase[key].segment.push(i);
   }
 
   isalreadyRoad(x, y) {
-    for (let i = 0; i < this.segments.length; i++) {
-      const segment = this.segments[i];
+    for (const key in this.roadBase) {
+      if (key === "index" || key == "0") continue;
 
-      const d1 = distance(
-        x,
-        y,
-        segment.startingPosition.x,
-        segment.startingPosition.y
-      );
-      const d2 = distance(
-        x,
-        y,
-        segment.endingPosition.x,
-        segment.endingPosition.y
-      );
+      const node = this.roadBase[key];
+      const d = distance(x, y, node.x, node.y);
 
-      if (d1 < segment.width / 2) {
-        segment.previousSegments.push(this.segments.length);
-        let newSegment = new Segment(segment.startingPosition);
-        newSegment.previousSegments.push(i);
-        this.segments.push(newSegment);
-        return true;
-      } else if (d2 < segment.width / 2) {
-        segment.nextSegments.push(this.segments.length);
-        let newSegment = new Segment(segment.endingPosition);
-        newSegment.previousSegments.push(i);
-        this.segments.push(newSegment);
-        return true;
+      if (d < node.width) {
+        return key;
       }
     }
-
-    return false;
+    return null;
   }
-
   createStartSegment({ x, y }, w = 50, color = "grey") {
-    let newSegment = this.isalreadyRoad(x, y);
+    let key = this.isalreadyRoad(x, y);
 
-    if (!newSegment) {
-      let segment = new Segment({ x, y }, color, w);
+    if (key) {
+      let newSegment = new Segment(key);
+      this.segments.push(newSegment);
+    } else {
+      key = this.addNode(x, y, color, w);
+      let segment = new Segment(key, color, w);
       this.segments.push(segment);
     }
+    this.addSegToNode(key, this.segments.length - 1);
     this.changeable = true;
   }
 
   createEndSegmentMove({ x, y }) {
     if (this.segments.length > 0 && this.changeable) {
-      this.segments[this.segments.length - 1].endingPosition.x = x;
-      this.segments[this.segments.length - 1].endingPosition.y = y;
+      this.segments[this.segments.length - 1].end = "0";
     }
   }
 
@@ -64,95 +59,148 @@ class Road {
     const d = distance(
       x,
       y,
-      this.segments[this.segments.length - 1].startingPosition.x,
-      this.segments[this.segments.length - 1].startingPosition.y
+      this.roadBase[this.segments[this.segments.length - 1].start].x,
+      this.roadBase[this.segments[this.segments.length - 1].start].y
     );
     if (d < 1) {
+      delete this.roadBase[this.segments[this.segments.length - 1].start];
       this.segments.splice(this.segments.length - 1, 1);
       return;
     }
-    this.roadBase.push(
-      new Circle(
-        this.segments[this.segments.length - 1].startingPosition.x,
-        this.segments[this.segments.length - 1].startingPosition.y,
-        "grey",
-        50
-      )
-    );
 
     if (d > 300) {
-      let A = this.segments[this.segments.length - 1].startingPosition;
+      let A = createVector(
+        this.roadBase[this.segments[this.segments.length - 1].start].x,
+        this.roadBase[this.segments[this.segments.length - 1].start].y
+      );
 
       let B = createVector(x, y);
       let C = Vector.sub(B, A);
       C.setMag(250);
       let D = Vector.add(A, C);
-      this.segments[this.segments.length - 1].endingPosition = createVector(
-        D.x,
-        D.y
-      );
-      this.roadBase.push(new Circle(D.x, D.y, "grey", 50));
+      let hitPoint = this.checkforOtherRoad(D.x, D.y, x, y);
+      if (hitPoint) {
+        return;
+      }
+      let key = this.addNode(D.x, D.y);
+      this.segments[this.segments.length - 1].end = key;
+
+      this.addSegToNode(key, this.segments.length - 1);
 
       this.createZone();
       this.createStartSegment(D);
       this.createEndSegment({ x, y });
     } else {
-      let found = false;
-      for (let i = 0; i < this.segments.length - 1; i++) {
-        const segment = this.segments[i];
-
-        const d1 = distance(
-          x,
-          y,
-          segment.startingPosition.x,
-          segment.startingPosition.y
-        );
-        const d2 = distance(
-          x,
-          y,
-          segment.endingPosition.x,
-          segment.endingPosition.y
-        );
-        if (d1 < segment.width / 2) {
-          segment.previousSegments.push(this.segments.length);
-          this.segments[this.segments.length - 1].nextSegments.push(i);
-          this.segments[this.segments.length - 1].endingPosition =
-            segment.startingPosition;
-          found = true;
-          break;
-        } else if (d2 < segment.width / 2) {
-          segment.nextSegments.push(this.segments.length);
-          this.segments[this.segments.length - 1].nextSegments.push(i);
-          this.segments[this.segments.length - 1].endingPosition =
-            segment.endingPosition;
-          found = true;
-          break;
+      let key = this.isalreadyRoad(x, y);
+      if (key) {
+        let hitPoint = this.checkforOtherRoad(x, y, x, y);
+        if (hitPoint) {
+          return;
         }
+        this.segments[this.segments.length - 1].end = key;
+      } else {
+        let hitPoint = this.checkforOtherRoad(x, y, x, y);
+        if (hitPoint) {
+          return;
+        }
+        key = this.addNode(x, y);
+        this.segments[this.segments.length - 1].end = key;
       }
-
-      if (!found) {
-        this.segments[this.segments.length - 1].endingPosition = createVector(
-          x,
-          y
-        );
-
-        this.roadBase.push(new Circle(x, y, "grey", 50));
-      }
+      this.addSegToNode(key, this.segments.length - 1);
       this.createZone();
     }
     this.changeable = false;
   }
 
-  createZone() {
+  checkforOtherRoad(Dx, Dy, x = false, y = false) {
+    const currSeg = this.segments[this.segments.length - 1];
+    const A = createVector(
+      this.roadBase[this.segments[this.segments.length - 1].start].x,
+      this.roadBase[this.segments[this.segments.length - 1].start].y
+    );
+    const B = createVector(Dx, Dy);
+
+    const lineIntersection = (p1, p2, p3, p4) => {
+      const s1x = p2.x - p1.x;
+      const s1y = p2.y - p1.y;
+      const s2x = p4.x - p3.x;
+      const s2y = p4.y - p3.y;
+
+      const denom = -s2x * s1y + s1x * s2y;
+      if (Math.abs(denom) < 0.00001) return null;
+
+      const s = (-s1y * (p1.x - p3.x) + s1x * (p1.y - p3.y)) / denom;
+      const t = (s2x * (p1.y - p3.y) - s2y * (p1.x - p3.x)) / denom;
+
+      const EPS = 0.01;
+
+      if (s > EPS && s < 1 - EPS && t > EPS && t < 1 - EPS) {
+        return createVector(p1.x + t * s1x, p1.y + t * s1y);
+      }
+
+      return null;
+    };
+
+    for (let i = 0; i < this.segments.length - 1; i++) {
+      const seg = this.segments[i];
+
+      if (!seg.start || !seg.end) continue;
+
+      const C = createVector(
+        this.roadBase[seg.start].x,
+        this.roadBase[seg.start].y
+      );
+      const D = createVector(
+        this.roadBase[seg.end].x,
+        this.roadBase[seg.end].y
+      );
+
+      const hitPoint = lineIntersection(A, B, C, D);
+
+      if (hitPoint) {
+        console.log("Intersection detected");
+
+        let key = this.addNode(hitPoint.x, hitPoint.y);
+        this.addSegToNode(key, this.segments.length - 1);
+        this.addSegToNode(key, i);
+
+        let segment = new Segment(key, seg.color, seg.width, seg.end);
+
+        seg.end = key;
+        this.segments[this.segments.length - 1].end = key;
+        this.segments.push(segment);
+        this.addSegToNode(key, this.segments.length - 1);
+
+        if (x !== false && y !== false) {
+          const d = distance(hitPoint.x, hitPoint.y, x, y);
+          if (d > 5) {
+            this.createStartSegment(hitPoint.copy());
+            this.createEndSegment({ x, y });
+          }
+        }
+        return hitPoint;
+      }
+    }
+
+    return null;
+  }
+
+  createZone(w = 100) {
     let length = this.segments.length - 1;
-    let A = this.segments[length].startingPosition;
-    let B = this.segments[length].endingPosition;
+    let A = createVector(
+      this.roadBase[this.segments[this.segments.length - 1].start].x,
+      this.roadBase[this.segments[this.segments.length - 1].start].y
+    );
+    let B = createVector(
+      this.roadBase[this.segments[this.segments.length - 1].end].x,
+      this.roadBase[this.segments[this.segments.length - 1].end].y
+    );
 
     let C = Vector.sub(B, A);
     let Cmag = C.mag();
     C.normalize();
 
-    let mag = 25;
+    let mag = 0;
     while (mag <= Cmag) {
       let step = C.copy().mult(mag);
       let D = Vector.add(A, step);
@@ -160,17 +208,18 @@ class Road {
       perpLeft.setMag(80);
       let finalPosLeft = Vector.add(D, perpLeft);
       this.areaZone.push(
-        new AreaZone(finalPosLeft.x, finalPosLeft.y, 100, 100, C.angle())
+        new AreaZone(finalPosLeft.x, finalPosLeft.y, w, w, C.angle())
       );
 
       let perpRight = createVector(C.y, -C.x);
       perpRight.setMag(80);
       let finalPosRight = Vector.add(D, perpRight);
       this.areaZone.push(
-        new AreaZone(finalPosRight.x, finalPosRight.y, 100, 100, C.angle())
+        new AreaZone(finalPosRight.x, finalPosRight.y, w, w, C.angle())
       );
 
-      mag += 110; //55
+      mag += 5;
+      this.zoneDeletor();
     }
     this.zoneDeletor();
   }
@@ -178,13 +227,83 @@ class Road {
   zoneDeletor() {
     for (let i = this.areaZone.length - 1; i >= 0; i--) {
       for (let j = i - 1; j >= 0; j--) {
-        let d = distance(
-          this.areaZone[i].position.x,
-          this.areaZone[i].position.y,
-          this.areaZone[j].position.x,
-          this.areaZone[j].position.y
-        );
-        if (d < 100) {
+        const A = this.areaZone[i];
+        const B = this.areaZone[j];
+
+        const dx = A.position.x - B.position.x;
+        const dy = A.position.y - B.position.y;
+        const r = A.radius + B.radius;
+        if (dx * dx + dy * dy > r * r) continue;
+
+        const getCorners = (Z) => {
+          const hw = Z.width / 2;
+          const hh = Z.height / 2;
+          const cos = Math.cos(Z.angle);
+          const sin = Math.sin(Z.angle);
+
+          return [
+            { x: -hw, y: -hh },
+            { x: hw, y: -hh },
+            { x: hw, y: hh },
+            { x: -hw, y: hh },
+          ].map((p) => ({
+            x: p.x * cos - p.y * sin + Z.position.x,
+            y: p.x * sin + p.y * cos + Z.position.y,
+          }));
+        };
+
+        const cornersA = getCorners(A);
+        const cornersB = getCorners(B);
+
+        const axes = [];
+
+        const addAxes = (corners) => {
+          for (let k = 0; k < 4; k++) {
+            const p1 = corners[k];
+            const p2 = corners[(k + 1) % 4];
+            const edgeX = p2.x - p1.x;
+            const edgeY = p2.y - p1.y;
+
+            let nx = -edgeY;
+            let ny = edgeX;
+            const len = Math.hypot(nx, ny);
+            nx /= len;
+            ny /= len;
+
+            axes.push({ x: nx, y: ny });
+          }
+        };
+
+        addAxes(cornersA);
+        addAxes(cornersB);
+
+        let collision = true;
+
+        for (let axis of axes) {
+          let minA = Infinity,
+            maxA = -Infinity;
+          let minB = Infinity,
+            maxB = -Infinity;
+
+          for (let p of cornersA) {
+            const proj = p.x * axis.x + p.y * axis.y;
+            minA = Math.min(minA, proj);
+            maxA = Math.max(maxA, proj);
+          }
+
+          for (let p of cornersB) {
+            const proj = p.x * axis.x + p.y * axis.y;
+            minB = Math.min(minB, proj);
+            maxB = Math.max(maxB, proj);
+          }
+
+          if (maxA < minB || maxB < minA) {
+            collision = false;
+            break;
+          }
+        }
+
+        if (collision) {
           this.areaZone.splice(i, 1);
           break;
         }
@@ -233,23 +352,174 @@ class Road {
     }
   }
 
-  deleteSegmentAndBase(index) {
-    this.segments.splice(index, 1);
-    this.roadBases.splice(index, 1);
+  saveToLocalStorage() {
+    const roadBaseData = {};
+
+    for (const key in this.roadBase) {
+      if (key === "index") continue;
+
+      const b = this.roadBase[key];
+      roadBaseData[key] = {
+        x: b.position.x,
+        y: b.position.y,
+        color: b.color,
+        radius: b.radius,
+        isBase: b.isBase || false,
+      };
+    }
+
+    const data = {
+      segments: this.segments.map((s) => ({
+        startNode: s.startNode,
+        endNode: s.endNode,
+        color: s.color,
+        width: s.width,
+        nextSegments: s.nextSegments,
+        previousSegments: s.previousSegments,
+      })),
+
+      areaZone: this.areaZone.map((z) => ({
+        position: { x: z.position.x, y: z.position.y },
+        width: z.width,
+        height: z.height,
+        angle: z.angle,
+        color: z.color,
+      })),
+
+      roadBase: roadBaseData,
+      roadBaseIndex: this.roadBase.index,
+    };
+
+    localStorage.setItem("ROAD_DATA", JSON.stringify(data));
+  }
+
+  loadFromLocalStorage() {
+    const raw = localStorage.getItem("ROAD_DATA");
+    if (!raw) return;
+
+    const data = JSON.parse(raw);
+
+    // clear existing
+    this.segments = [];
+    this.areaZone = [];
+    this.roadBase = { index: data.roadBaseIndex || 0 };
+
+    /* ===== restore nodes ===== */
+    for (const key in data.roadBase) {
+      const b = data.roadBase[key];
+      this.roadBase[key] = new Circle(b.x, b.y, b.color, b.radius, b.isBase);
+    }
+
+    /* ===== restore segments ===== */
+    for (const s of data.segments) {
+      const seg = new Segment(s.startNode, s.color, s.width);
+      seg.endNode = s.endNode;
+      seg.nextSegments = s.nextSegments || [];
+      seg.previousSegments = s.previousSegments || [];
+      this.segments.push(seg);
+    }
+
+    /* ===== restore zones ===== */
+    for (const z of data.areaZone) {
+      const zone = new AreaZone(
+        z.position.x,
+        z.position.y,
+        z.width,
+        z.height,
+        z.angle,
+        z.color
+      );
+      this.areaZone.push(zone);
+    }
+  }
+
+  deleteSegmentAt({ x, y }) {
+    const clickRadius = 30;
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      const seg = this.segments[i];
+
+      let A = createVector(
+        this.roadBase[seg.start].x,
+        this.roadBase[seg.start].y
+      );
+      let B = createVector(this.roadBase[seg.end].x, this.roadBase[seg.end].y);
+
+      const ABx = B.x - A.x;
+      const ABy = B.y - A.y;
+      const APx = x - A.x;
+      const APy = y - A.y;
+
+      const ab2 = ABx * ABx + ABy * ABy;
+      let t = (APx * ABx + APy * ABy) / ab2;
+      t = Math.max(0, Math.min(1, t));
+
+      const Cx = A.x + ABx * t;
+      const Cy = A.y + ABy * t;
+
+      const dx = x - Cx;
+      const dy = y - Cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= seg.width / 2 + clickRadius) {
+        console.log("next " + i, this.roadBase[this.segments[i].end].segment);
+        console.log("previous", this.roadBase[this.segments[i].start].segment);
+        const startNode = this.segments[i].start;
+        const endNode = this.segments[i].end;
+
+        let startArr = this.roadBase[startNode].segment;
+        this.roadBase[startNode].segment = startArr.filter((idx) => idx !== i);
+
+        let endArr = this.roadBase[endNode].segment;
+        this.roadBase[endNode].segment = endArr.filter((idx) => idx !== i);
+
+        console.log("next", this.roadBase[this.segments[i].end].segment);
+        console.log("previous", this.roadBase[this.segments[i].start].segment);
+
+        if (this.roadBase[startNode].segment.length === 0) {
+          delete this.roadBase[startNode];
+        }
+
+        if (this.roadBase[endNode].segment.length === 0) {
+          delete this.roadBase[endNode];
+        }
+
+        this.segments.splice(i, 1);
+
+        for (const key in this.roadBase) {
+          if (key == "index" && key == "0") continue;
+
+          const arr = this.roadBase[key].segment;
+
+          for (let j = 0; j < arr.length; j++) {
+            if (arr[j] > i) {
+              arr[j]--;
+            }
+          }
+        }
+
+        return;
+      }
+    }
   }
 
   draw(ctx, { x, y }, zone) {
     if (this.editMode) {
-      this.segments.forEach((segment) => segment.draw(ctx));
-      this.roadBase.forEach((segment) => segment.draw(ctx, "blue"));
-      this.areaZone.forEach((zone) => zone.draw(ctx,zone));
-      this.base.position.x = x;
-      this.base.position.y = y;
-      this.base.draw(ctx);
+      this.areaZone.forEach((zone) => zone.draw(ctx, zone));
+      this.segments.forEach((segment, i) => segment.draw(ctx));
+      for (const id in this.roadBase) {
+        if (id === "index" || id == "0") continue;
+        this.roadBase[id].draw(ctx, "blue");
+      }
+      this.roadBase["0"].draw(ctx, null, x, y);
     } else {
-      this.segments.forEach((segment) => segment.draw(ctx));
-      this.roadBase.forEach((segment) => segment.draw(ctx));
-      this.areaZone.forEach((areazone) => areazone.draw(ctx,zone));
+      this.areaZone.forEach((areazone) => areazone.draw(ctx, zone));
+      this.segments.forEach((segment, i) => {
+        segment.draw(ctx);
+      });
+      for (const id in this.roadBase) {
+        if (id === "index" || id == "0") continue;
+        this.roadBase[id].draw(ctx);
+      }
     }
   }
 }
