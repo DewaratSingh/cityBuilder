@@ -4,7 +4,24 @@ let road;
 let object = {
   select:0,
   Move: [],
-  Building: [],
+  Building: [
+    {
+      name: "Residential",
+      color: "rgba(0, 255, 0, 0.3)",
+      width:50,
+      height:50,
+    },{
+      name: "Residential",
+      color: "rgba(33, 55, 223, 0.3)",
+      width:100,
+      height:150,
+    },{
+      name: "Residential",
+      color: "rgba(33, 55, 223, 0.3)",
+      width:150,
+      height:100,
+    }
+  ],
   Trees: [],
   Zone: [
     {
@@ -49,6 +66,7 @@ let object = {
 
 function tabChange(self) {
   Tab = self.innerHTML;
+  console.log(Tab)
 
   if (Tab == "Road") {
     road.editMode = true;

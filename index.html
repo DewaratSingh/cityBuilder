@@ -26,6 +26,9 @@
     <script src="./road/segment.js"></script>
     <script src="./road/zone.js"></script>
     <script src="./road/road.js"></script>
+    <script src="./assertCode/build.js"></script>
+    <script src="./assertCode/building.js"></script>
+
     <script>
       const canvas = document.getElementById("canvas");
       const ctx = canvas.getContext("2d");
@@ -34,6 +37,9 @@
       canvas.height = window.innerHeight;
 
       road = new Road();
+
+      let building=new Building()
+
       let camera = new Camera(canvas);
 
       let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
@@ -41,6 +47,7 @@
       function animation() {
         camera.restore(ctx);
         road.draw(ctx, camera.mouse.move, zone);
+        building.draw(ctx,camera.mouse.move)
 
         AreaZone.drawZone(zone);
         requestAnimationFrame(animation);
@@ -70,6 +77,9 @@
             zone.start = camera.getMousePosition(e);
             zone.move = camera.getMousePosition(e);
             zone.down = true;
+            break;
+          case "Building":
+            building.placeBuilding()
             break;
         }
       });
@@ -156,7 +166,7 @@
 
       window.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "q") {
-          e.preventDefault(); 
+          e.preventDefault();
           if (road) {
             road.saveToLocalStorage();
             console.log("Road saved to localStorage");
@@ -164,9 +174,8 @@
           }
         }
       });
-      
-      canvas.addEventListener("contextmenu", e => e.preventDefault());
 
+      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     </script>
   </body>
 </html>

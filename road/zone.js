@@ -1,13 +1,13 @@
 class AreaZone {
-  constructor(x, y, w, h, a, color = "grey") {
+  constructor(x, y, w, h, a,index,point) {
     this.position = createVector(x, y);
-    this.roadPoint = null;
-    this.segmentIndex = null;
+    this.roadPoint = point;
+    this.segmentIndex = index;
     this.height = h;
     this.width = w;
     this.radius = Math.sqrt(h * h + w * w);
     this.angle = a;
-    this.color = color;
+    this.color = "#45454572";
   }
 
   static drawZone(zone) {
@@ -45,7 +45,7 @@ class AreaZone {
     ctx.translate(this.position.x, this.position.y);
     ctx.rotate(this.angle);
     ctx.beginPath();
-    ctx.strokeStyle = "red";
+    //ctx.strokeStyle = "red";
     ctx.lineWidth = 4;
     ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
     //  ctx.stroke();

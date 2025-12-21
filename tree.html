@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Procedural Roof Houses (Top View)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #8db36a;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+const CANVAS = 900;
+let houses = [];
+
+function r(min, max) {
+  return random(min, max);
+}
+
+/* ================= HOUSE CLASS ================= */
+
+class RoofHouse {
+  constructor(x, y, scale = 1) {
+    this.x = x;
+    this.y = y;
+    this.scale = scale;
+    this.parts = [];
+
+    this.generate();
+  }
+
+  generate() {
+    let type = floor(r(0, 4));
+
+    let baseW = r(120, 200) * this.scale;
+    let baseH = r(80, 160) * this.scale;
+
+    // main block
+    this.parts.push(this.makePart(0, 0, baseW, baseH));
+
+    // add wings
+    if (type >= 1) {
+      this.parts.push(
+        this.makePart(
+          baseW * 0.5,
+          baseH * 0.6,
+          r(80, 140),
+          r(60, 120)
+        )
+      );
+    }
+
+    if (type >= 2) {
+      this.parts.push(
+        this.makePart(
+          -r(60, 120),
+          baseH * 0.3,
+          r(80, 140),
+          r(60, 120)
+        )
+      );
+    }
+
+    if (type === 3) {
+      this.parts.push(
+        this.makePart(
+          baseW * 0.2,
+          -r(60, 120),
+          r(80, 140),
+          r(60, 120)
+        )
+      );
+    }
+  }
+
+  makePart(x, y, w, h) {
+    return {
+      x, y, w, h,
+      dir: random() > 0.5 ? "h" : "v"
+    };
+  }
+
+  drawRoofPart(p) {
+    push();
+    translate(p.x, p.y);
+
+    let light = color(190, 120, 70);
+    let dark  = color(150, 90, 50);
+
+    noStroke();
+
+    // base
+    fill(light);
+    rect(0, 0, p.w, p.h);
+
+    // roof shading
+    fill(dark);
+    if (p.dir === "h") {
+      rect(0, 0, p.w, p.h * 0.5);
+    } else {
+      rect(0, 0, p.w * 0.5, p.h);
+    }
+
+    pop();
+  }
+
+  draw() {
+    push();
+    translate(this.x, this.y);
+
+    for (let p of this.parts) {
+      this.drawRoofPart(p);
+    }
+
+    pop();
+  }
+}
+
+/* ================= SETUP ================= */
+
+function setup() {
+  createCanvas(CANVAS, CANVAS);
+  noLoop();
+
+  for (let i = 0; i < 8; i++) {
+    houses.push(
+      new RoofHouse(
+        r(100, CANVAS - 250),
+        r(100, CANVAS - 250),
+        r(0.8, 1.1)
+      )
+    );
+  }
+}
+
+function draw() {
+  background(150, 190, 110);
+
+  for (let h of houses) h.draw();
+}
+</script>
+
+</body>
+</html>
