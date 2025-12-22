@@ -8,6 +8,7 @@ class AreaZone {
     this.radius = Math.sqrt(h * h + w * w);
     this.angle = a;
     this.color = "#45454572";
+    this.sold=false;
   }
 
   static drawZone(zone) {

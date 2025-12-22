@@ -636,8 +636,9 @@ class Road {
 
       this.roadBase["0"].draw(ctx, null, x, y);
     } else {
+      if(Tab != "Move"){
       this.areaZone.forEach((areazone) => areazone.draw(ctx, zone));
-
+      }
       for (const id in this.segments) {
         if (id === "index") continue;
         this.segments[id].draw(ctx);

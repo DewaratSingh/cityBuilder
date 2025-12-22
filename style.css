@@ -106,3 +106,15 @@ select {
 #option > div:first-child {
   background-color: rgb(112, 149, 39);
 }
+
+#time {
+  position: fixed;
+  top: 2px;
+  left: 2px;
+  background-color: rgb(112, 149, 39);
+  height: 50px;
+  width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

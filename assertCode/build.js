@@ -1,7 +1,7 @@
 class Build {
-  constructor(x = 0, y = 0, w = 0, h = 0, a = 0, color = "#cd2d2dbd") {
+  constructor(x = 0, y = 0, w = 0, h = 0, a = 0, color = "#cd2d2dbd",zone) {
     this.position = createVector(x, y);
-    this.zone = null;
+    this.segmentIndexAndPoint = zone;
     this.height = h;
     this.width = w;
     this.angle = a;

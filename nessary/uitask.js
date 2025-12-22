@@ -1,28 +1,39 @@
 let Tab = "Move";
 let road;
+let Time = 1;
+let timespeed = 1;
 
 let object = {
-  select:0,
+  select: 0,
   Move: [],
   Building: [
     {
       name: "Residential",
       color: "rgba(0, 255, 0, 0.3)",
-      width:50,
-      height:50,
-    },{
+      width: 50,
+      height: 50,
+    },
+    {
       name: "Residential",
       color: "rgba(33, 55, 223, 0.3)",
-      width:100,
-      height:150,
-    },{
+      width: 100,
+      height: 150,
+    },
+    {
       name: "Residential",
       color: "rgba(33, 55, 223, 0.3)",
-      width:150,
-      height:100,
-    }
+      width: 150,
+      height: 100,
+    },
   ],
-  Trees: [],
+  Trees: [
+    {
+      name: "Residential",
+      color: "rgba(0, 255, 0, 0.3)",
+      width: 50,
+      height: 50,
+    },
+  ],
   Zone: [
     {
       name: "Residential",
@@ -64,9 +75,10 @@ let object = {
   ],
 };
 
-function tabChange(self) {
-  Tab = self.innerHTML;
-  console.log(Tab)
+function tabChange(e, self) {
+  e.stopPropagation();
+  e.preventDefault();
+  Tab = self.innerText;
 
   if (Tab == "Road") {
     road.editMode = true;
@@ -88,20 +100,23 @@ function tabChange(self) {
 
   let obj = document.getElementById("obj");
   obj.innerHTML = "";
-
-if (object[Tab].length > 0) {
-  object[Tab].forEach((object, i) => {
-    obj.innerHTML += `
-      <div onclick="selectObj(${i})" style="background-color: ${object.color};">
+  console.log(object, Tab);
+  if (object[Tab].length > 0) {
+    object[Tab].forEach((object, i) => {
+      obj.innerHTML += `
+      <div onmousedown="event.stopPropagation()" onclick="selectObj(event,${i})" style="background-color: ${object.color};">
         ${object.name}
       </div>`;
-  });
+      selectObj(null, i);
+    });
+  }
 }
 
+function selectObj(e, i) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
 
-
-}
-
-function selectObj(i) {
-  object.select=i;
+  object.select = i;
 }

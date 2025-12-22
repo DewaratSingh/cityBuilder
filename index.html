@@ -5,14 +5,39 @@
   </head>
   <body>
     <canvas id="canvas"></canvas>
-
+    <div id="time"></div>
     <div id="selector">
       <div id="option">
-        <div onclick="tabChange(this)">Move</div>
-        <div onclick="tabChange(this)">Road</div>
-        <div onclick="tabChange(this)">Zone</div>
-        <div onclick="tabChange(this)">Trees</div>
-        <div onclick="tabChange(this)">Building</div>
+        <div
+          onmousedown="event.stopPropagation()"
+          onclick="tabChange(event,this)"
+        >
+          Move
+        </div>
+        <div
+          onmousedown="event.stopPropagation()"
+          onclick="tabChange(event,this)"
+        >
+          Road
+        </div>
+        <div
+          onmousedown="event.stopPropagation()"
+          onclick="tabChange(event,this)"
+        >
+          Zone
+        </div>
+        <div
+          onmousedown="event.stopPropagation()"
+          onclick="tabChange(event,this)"
+        >
+          Trees
+        </div>
+        <div
+          onmousedown="event.stopPropagation()"
+          onclick="tabChange(event,this)"
+        >
+          Building
+        </div>
       </div>
       <div id="obj" class="your-div"></div>
     </div>
@@ -38,7 +63,36 @@
 
       road = new Road();
 
-      let building=new Building()
+      let building = new Building();
+
+      Time = Date.now();
+      let lastReal = Date.now();
+      timespeed = 1_000_000;
+      let lastAreaSearchTime = Time;
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const TWO_MONTHS_MS = 60 * DAY_MS;
+
+      setInterval(() => {
+        const now = Date.now();
+        let realDelta = now - lastReal;
+        lastReal = now;
+
+        // clamp to avoid huge jumps
+        realDelta = Math.min(realDelta, 100);
+
+        Time += realDelta * timespeed;
+
+        // update UI
+        document.getElementById("time").innerHTML = new Date(
+          Time
+        ).toLocaleDateString("en-IN");
+
+        // ---- 2 MONTH LOGIC ----
+        if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
+          building.searchForArea();
+          lastAreaSearchTime = Time;
+        }
+      }, 100);
 
       let camera = new Camera(canvas);
 
@@ -46,8 +100,8 @@
 
       function animation() {
         camera.restore(ctx);
+        building.draw(ctx, camera.mouse.move);
         road.draw(ctx, camera.mouse.move, zone);
-        building.draw(ctx,camera.mouse.move)
 
         AreaZone.drawZone(zone);
         requestAnimationFrame(animation);
@@ -79,7 +133,10 @@
             zone.down = true;
             break;
           case "Building":
-            building.placeBuilding()
+            building.placeBuilding();
+            break;
+          case "Trees":
+            building.placeBuilding();
             break;
         }
       });
