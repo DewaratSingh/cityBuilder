@@ -43,8 +43,9 @@
     </div>
     <div id="constructionline"></div>
 
-    <script src="./nessary/Camera.js"></script>
+    
     <script src="./nessary/uitask.js"></script>
+    <script src="./nessary/Camera.js"></script>
     <script src="./nessary/vector.js"></script>
     <script src="./nessary/util.js"></script>
     <script src="./road/Circle.js"></script>
@@ -89,7 +90,7 @@
 
         // ---- 2 MONTH LOGIC ----
         if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
-          building.searchForArea();
+          //building.searchForArea();
           lastAreaSearchTime = Time;
         }
       }, 100);
@@ -107,6 +108,7 @@
       function animation() {
         FPS++
         camera.restore(ctx);
+        camera.setZoom()
         building.draw(ctx, camera.mouse.move);
         road.draw(ctx, camera.mouse.move, zone);
 

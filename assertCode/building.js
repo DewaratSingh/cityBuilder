@@ -11,6 +11,7 @@ class Building {
     this.time = Time;
     this.autoGenerator = {};
   }
+
   lineRotatedRectCollision(
     x1,
     y1,
@@ -23,8 +24,13 @@ class Building {
     angle,
     lineWidth = 45
   ) {
-    const expand = lineWidth / 2;
+    // Cheap early exit (rectangle center vs line midpoint)
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+    if (distance(cx, cy, mx, my) > 350) return false;
 
+    // Expand rectangle by line thickness
+    const expand = lineWidth / 2;
     w += expand * 2;
     h += expand * 2;
 
@@ -34,16 +40,17 @@ class Building {
     const hw = w / 2;
     const hh = h / 2;
 
+    // Rectangle corners
     const corners = [
-      { x: cx + (-hw * cos - -hh * sin), y: cy + (-hw * sin + -hh * cos) },
-      { x: cx + (hw * cos - -hh * sin), y: cy + (hw * sin + -hh * cos) },
+      { x: cx + (-hw * cos + hh * sin), y: cy + (-hw * sin - hh * cos) },
+      { x: cx + (hw * cos + hh * sin), y: cy + (hw * sin - hh * cos) },
       { x: cx + (hw * cos - hh * sin), y: cy + (hw * sin + hh * cos) },
       { x: cx + (-hw * cos - hh * sin), y: cy + (-hw * sin + hh * cos) },
     ];
 
     function intersect(ax, ay, bx, by, cx, cy, dx, dy) {
       const den = (dy - cy) * (bx - ax) - (dx - cx) * (by - ay);
-      if (Math.abs(den) < 0.00001) return false;
+      if (Math.abs(den) < 1e-6) return false;
 
       const ua = ((dx - cx) * (ay - cy) - (dy - cy) * (ax - cx)) / den;
       const ub = ((bx - ax) * (ay - cy) - (by - ay) * (ax - cx)) / den;
@@ -51,99 +58,49 @@ class Building {
       return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
     }
 
-    // 1️⃣ Line vs rectangle
+    // Line vs rectangle edges
     for (let i = 0; i < 4; i++) {
       const p1 = corners[i];
       const p2 = corners[(i + 1) % 4];
-
       if (intersect(x1, y1, x2, y2, p1.x, p1.y, p2.x, p2.y)) {
         return true;
       }
     }
 
-    // 2️⃣ Building vs building (SAT) for current preview building
-    if (this.build && this.build.length > 0) {
-      const getCorners = (Z) => {
-        const hw = Z.width / 2;
-        const hh = Z.height / 2;
-        const cos = Math.cos(Z.angle);
-        const sin = Math.sin(Z.angle);
+    // Line endpoint inside rectangle
+    function pointInRotatedRect(px, py) {
+      const dx = px - cx;
+      const dy = py - cy;
 
-        return [
-          { x: -hw, y: -hh },
-          { x: hw, y: -hh },
-          { x: hw, y: hh },
-          { x: -hw, y: hh },
-        ].map((p) => ({
-          x: p.x * cos - p.y * sin + Z.position.x,
-          y: p.x * sin + p.y * cos + Z.position.y,
-        }));
-      };
+      const lx = dx * cos + dy * sin;
+      const ly = -dx * sin + dy * cos;
 
-      const rect = {
-        position: { x: cx, y: cy },
-        width: w,
-        height: h,
-        angle: angle,
-      };
-
-      const cornersPreview = getCorners(rect);
-
-      for (let i = 0; i < this.build.length; i++) {
-        const placed = this.build[i];
-        const dx = cx - placed.position.x;
-        const dy = cy - placed.position.y;
-        const r = (w + placed.width) / 4 + (h + placed.height) / 4; // cheap radius check
-        if (dx * dx + dy * dy > r * r) continue;
-
-        const cornersPlaced = getCorners(placed);
-
-        const axes = [];
-        const addAxes = (c) => {
-          for (let k = 0; k < 4; k++) {
-            const p1 = c[k];
-            const p2 = c[(k + 1) % 4];
-            let nx = -(p2.y - p1.y);
-            let ny = p2.x - p1.x;
-            const len = Math.hypot(nx, ny);
-            nx /= len;
-            ny /= len;
-            axes.push({ x: nx, y: ny });
-          }
-        };
-
-        addAxes(cornersPreview);
-        addAxes(cornersPlaced);
-
-        let collision = true;
-        for (let axis of axes) {
-          let minA = Infinity,
-            maxA = -Infinity;
-          let minB = Infinity,
-            maxB = -Infinity;
-
-          for (let p of cornersPreview) {
-            const proj = p.x * axis.x + p.y * axis.y;
-            minA = Math.min(minA, proj);
-            maxA = Math.max(maxA, proj);
-          }
-
-          for (let p of cornersPlaced) {
-            const proj = p.x * axis.x + p.y * axis.y;
-            minB = Math.min(minB, proj);
-            maxB = Math.max(maxB, proj);
-          }
-
-          if (maxA < minB || maxB < minA) {
-            collision = false;
-            break;
-          }
-        }
-
-        if (collision) return true;
-      }
+      return Math.abs(lx) <= w / 2 && Math.abs(ly) <= h / 2;
     }
 
+    if (pointInRotatedRect(x1, y1) || pointInRotatedRect(x2, y2)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  buildingVSbuildingCollusion() {
+    for (let i = 0; i < this.build.length; i++) {
+      if (
+        distance(
+          this.position.x,
+          this.position.y,
+          this.build[i].position.x,
+          this.build[i].position.y
+        ) < 300
+      ) {
+        console.log(4)
+        if (rectRectCollision(this, this.build[i])) {
+          return true;
+        }
+      }
+    }
     return false;
   }
 
@@ -172,28 +129,14 @@ class Building {
         const seg = road.segments[id];
         const start = road.roadBase[seg.start];
         const end = road.roadBase[seg.end];
-        
-console.log(color)
+
+        console.log(color);
         if (
           color == "rgba(255, 0, 0, 0.3)" ||
           color == "rgba(0, 0, 255, 0.3)" ||
           color == "rgba(0, 255, 0, 0.3)"
         ) {
-console.log(2)
-        if (
-          this.lineRotatedRectCollision(
-            start.x,
-            start.y,
-            end.x,
-            end.y,
-            position.x,
-            position.y,
-            width,
-            height,
-            angle
-          )
-        ) {
-          hasCollision = true;
+          console.log(2);
           if (
             this.lineRotatedRectCollision(
               start.x,
@@ -202,21 +145,35 @@ console.log(2)
               end.y,
               position.x,
               position.y,
-              50,
-              50,
+              width,
+              height,
               angle
             )
           ) {
-            area.sold = true;
+            hasCollision = true;
+            if (
+              this.lineRotatedRectCollision(
+                start.x,
+                start.y,
+                end.x,
+                end.y,
+                position.x,
+                position.y,
+                50,
+                50,
+                angle
+              )
+            ) {
+              area.sold = true;
+              break;
+            }
             break;
           }
-          break;
         }
-      }
       }
       if (!hasCollision) {
         area.sold = true;
-        
+
         if (
           color == "rgba(255, 0, 0, 0.3)" ||
           color == "rgba(0, 0, 255, 0.3)" ||
@@ -250,9 +207,6 @@ console.log(2)
   }
 
   draw(ctx, { x, y }) {
-    // ctx.arc(this.position.x,this.position.y,this.radius,0,2*Math.PI)
-    // ctx.fill()
-
     this.build.forEach((build) => build.draw(ctx));
 
     if (Tab == "Building") {
@@ -260,7 +214,8 @@ console.log(2)
       this.position.y = y;
       this.width = object.Building[object.select].width;
       this.height = object.Building[object.select].height;
-      this.color = "#cd2d2dbd";
+      let collusion = false;
+      this.color="#cd2d2dbd"
 
       for (let i = 0; i < road.areaZone.length; i++) {
         let area = road.areaZone[i];
@@ -271,7 +226,7 @@ console.log(2)
 
           let B = Vector.sub(area.position, area.roadPoint);
           B.normalize();
-          B.setMag(this.height / 2 - 25);
+          B.setMag(this.height / 2 - 15);
 
           this.position = Vector.add(area.position, B);
 
@@ -280,13 +235,14 @@ console.log(2)
             point: road.areaZone.roadPoint,
           };
 
+          collusion = this.buildingVSbuildingCollusion();
+
           for (const id in road.segments) {
             if (id === "index") continue;
             let seg = road.segments[id];
             let start = road.roadBase[seg.start];
             let end = road.roadBase[seg.end];
 
-            this.color = "#f700ffff";
             if (
               this.lineRotatedRectCollision(
                 start.x,
@@ -300,14 +256,11 @@ console.log(2)
                 this.angle
               )
             ) {
-              this.color = "#cd2d2dbd";
+              collusion = true;
               break;
             }
           }
-
-          break;
-        } else {
-          this.color = "#cd2d2dbd";
+          this.color = collusion ? "#cd2d2dbd" : "#f700ffff";
         }
       }
 

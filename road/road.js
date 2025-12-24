@@ -204,9 +204,8 @@ class Road {
     return null;
   }
 
-  createZone(w = 50, index) {
-    let areaLength=this.areaZone.length
-    let length = this.segments.length - 1;
+  createZone(w = 30, index) {
+    let areaLength = this.areaZone.length;
     let A = createVector(
       this.roadBase[this.segments[index ? index : this.segments.index].start].x,
       this.roadBase[this.segments[index ? index : this.segments.index].start].y
@@ -222,10 +221,11 @@ class Road {
 
     let mag = 0;
     while (mag <= Cmag) {
+      console.log(1);
       let step = C.copy().mult(mag);
       let D = Vector.add(A, step);
       let perpLeft = createVector(-C.y, C.x);
-      perpLeft.setMag(55);
+      perpLeft.setMag(45);
       let finalPosLeft = Vector.add(D, perpLeft);
       this.areaZone.push(
         new AreaZone(
@@ -240,7 +240,7 @@ class Road {
       );
 
       let perpRight = createVector(C.y, -C.x);
-      perpRight.setMag(55);
+      perpRight.setMag(45);
       let finalPosRight = Vector.add(D, perpRight);
       this.areaZone.push(
         new AreaZone(
@@ -254,10 +254,9 @@ class Road {
         )
       );
 
-      mag += 5;
-      this.zoneDeletor(areaLength);
+      mag += 31;
     }
-   // this.zoneDeletor();
+    this.zoneDeletor(areaLength);
   }
 
   zoneDeletor(l) {
@@ -268,101 +267,31 @@ class Road {
         const dx = A.position.x - B.position.x;
         const dy = A.position.y - B.position.y;
         const r = A.radius + B.radius;
-        if (dx * dx + dy * dy > r * r) continue;
-
-        const getCorners = (Z) => {
-          const hw = Z.width / 2;
-          const hh = Z.height / 2;
-          const cos = Math.cos(Z.angle);
-          const sin = Math.sin(Z.angle);
-
-          return [
-            { x: -hw, y: -hh },
-            { x: hw, y: -hh },
-            { x: hw, y: hh },
-            { x: -hw, y: hh },
-          ].map((p) => ({
-            x: p.x * cos - p.y * sin + Z.position.x,
-            y: p.x * sin + p.y * cos + Z.position.y,
-          }));
-        };
-
-        const cornersA = getCorners(A);
-        const cornersB = getCorners(B);
-        const axes = [];
-
-        const addAxes = (corners) => {
-          for (let k = 0; k < 4; k++) {
-            const p1 = corners[k];
-            const p2 = corners[(k + 1) % 4];
-            const edgeX = p2.x - p1.x;
-            const edgeY = p2.y - p1.y;
-
-            let nx = -edgeY;
-            let ny = edgeX;
-            const len = Math.hypot(nx, ny);
-            nx /= len;
-            ny /= len;
-
-            axes.push({ x: nx, y: ny });
-          }
-        };
-        addAxes(cornersA);
-        addAxes(cornersB);
-        let collision = true;
-
-        for (let axis of axes) {
-          let minA = Infinity,
-            maxA = -Infinity;
-          let minB = Infinity,
-            maxB = -Infinity;
-
-          for (let p of cornersA) {
-            const proj = p.x * axis.x + p.y * axis.y;
-            minA = Math.min(minA, proj);
-            maxA = Math.max(maxA, proj);
-          }
-
-          for (let p of cornersB) {
-            const proj = p.x * axis.x + p.y * axis.y;
-            minB = Math.min(minB, proj);
-            maxB = Math.max(maxB, proj);
-          }
-
-          if (maxA < minB || maxB < minA) {
-            collision = false;
-            break;
-          }
-        }
-
-        if (collision) {
+        if (
+          distance(A.position.x, A.position.y, B.position.x, B.position.y) < 30
+        ) {
           this.areaZone.splice(i, 1);
           break;
         }
       }
     }
 
-
-
-
-
-
     for (let i = this.areaZone.length - 1; i >= 0; i--) {
       const circle = this.areaZone[i];
       const P = circle.position;
-      const r = 50;
+      const r = 40;
 
       let collided = false;
 
       for (const j in this.segments) {
         if (j === "index") continue;
-        
 
         const seg = this.segments[j];
         const A = seg.startingPosition;
         const B = seg.endingPosition;
 
-        if (distance(circle.position.x,circle.position.y,A.x,A.y)>300) continue;
+        if (distance(circle.position.x, circle.position.y, A.x, A.y) > 300)
+          continue;
 
         const AB = { x: B.x - A.x, y: B.y - A.y };
         const AP = { x: P.x - A.x, y: P.y - A.y };
@@ -408,7 +337,7 @@ class Road {
     for (let i = building.build.length - 1; i >= 0; i--) {
       const b = building.build[i];
 
-      if (distance(x1,y1,b.position.x,b.position.y)>300) continue;
+      if (distance(x1, y1, b.position.x, b.position.y) > 300) continue;
 
       const hit = this.lineRotatedRectCollision(
         x1,
@@ -640,8 +569,8 @@ class Road {
 
       this.roadBase["0"].draw(ctx, null, x, y);
     } else {
-      if(Tab != "Move"){
-      this.areaZone.forEach((areazone) => areazone.draw(ctx, zone));
+      if (Tab != "Move") {
+        this.areaZone.forEach((areazone) => areazone.draw(ctx, zone));
       }
       for (const id in this.segments) {
         if (id === "index") continue;
