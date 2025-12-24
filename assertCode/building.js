@@ -150,11 +150,12 @@ class Building {
   searchForArea() {
     for (let i = 0; i < road.areaZone.length; i++) {
       const area = road.areaZone[i];
+      let color = area.color;
 
       if (area.sold) continue;
 
       const width = random(70, 150);
-      const height = width+ random(-20, 20);
+      const height = width + random(-20, 20);
 
       let B = Vector.sub(area.position, area.roadPoint);
       B.normalize();
@@ -171,7 +172,14 @@ class Building {
         const seg = road.segments[id];
         const start = road.roadBase[seg.start];
         const end = road.roadBase[seg.end];
-
+        
+console.log(color)
+        if (
+          color == "rgba(255, 0, 0, 0.3)" ||
+          color == "rgba(0, 0, 255, 0.3)" ||
+          color == "rgba(0, 255, 0, 0.3)"
+        ) {
+console.log(2)
         if (
           this.lineRotatedRectCollision(
             start.x,
@@ -186,26 +194,41 @@ class Building {
           )
         ) {
           hasCollision = true;
+          if (
+            this.lineRotatedRectCollision(
+              start.x,
+              start.y,
+              end.x,
+              end.y,
+              position.x,
+              position.y,
+              50,
+              50,
+              angle
+            )
+          ) {
+            area.sold = true;
+            break;
+          }
           break;
         }
       }
+      }
       if (!hasCollision) {
         area.sold = true;
-
-        this.build.push(
-          new Build(
-            position.x,
-            position.y,
-            width,
-            height,
-            angle,
-            randomColor(),
-            {
+        
+        if (
+          color == "rgba(255, 0, 0, 0.3)" ||
+          color == "rgba(0, 0, 255, 0.3)" ||
+          color == "rgba(0, 255, 0, 0.3)"
+        ) {
+          this.build.push(
+            new Build(position.x, position.y, width, height, angle, color, {
               segmentIndex: area.segmentIndex,
               point: area.roadPoint,
-            }
-          )
-        );
+            })
+          );
+        }
       }
     }
   }
@@ -302,8 +325,8 @@ class Building {
     } else if (Tab == "Trees") {
       this.position.x = x;
       this.position.y = y;
-      this.width = object.Building[object.select].width;
-      this.height = object.Building[object.select].height;
+      this.width = object.Trees[object.select].width;
+      this.height = object.Trees[object.select].height;
       this.color = "#f700ffff";
 
       for (const id in road.segments) {

@@ -47,8 +47,10 @@ class AreaZone {
     ctx.rotate(this.angle);
     ctx.beginPath();
     //ctx.strokeStyle = "red";
-    ctx.lineWidth = 4;
-    ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+    //ctx.lineWidth = 4;
+    //ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+    ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
+
     //  ctx.stroke();
     ctx.fillStyle = this.color;
     ctx.fill();

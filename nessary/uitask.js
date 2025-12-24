@@ -32,6 +32,11 @@ let object = {
       color: "rgba(0, 255, 0, 0.3)",
       width: 50,
       height: 50,
+    },{
+      name: "Residelppp",
+      color: "rgba(156, 141, 41, 0.3)",
+      width: 10,
+      height: 10,
     },
   ],
   Zone: [
@@ -100,7 +105,7 @@ function tabChange(e, self) {
 
   let obj = document.getElementById("obj");
   obj.innerHTML = "";
-  console.log(object, Tab);
+  //console.log(object, Tab);
   if (object[Tab].length > 0) {
     object[Tab].forEach((object, i) => {
       obj.innerHTML += `

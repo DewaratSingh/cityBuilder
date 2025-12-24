@@ -98,7 +98,14 @@
 
       let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
 
+      let FPS=0
+      setInterval(()=>{
+       // console.log(FPS,camera.mouse.zoom)
+        FPS=0
+      },1000)
+
       function animation() {
+        FPS++
         camera.restore(ctx);
         building.draw(ctx, camera.mouse.move);
         road.draw(ctx, camera.mouse.move, zone);

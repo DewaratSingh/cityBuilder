@@ -1,6 +1,5 @@
 class Road {
   constructor() {
-    //this.segments = [];
     this.areaZone = [];
     this.roadBase = {
       index: 1,
@@ -11,7 +10,6 @@ class Road {
     };
     this.changeable = false;
     this.editMode = false;
-    //this.loadFromLocalStorage()
   }
 
   addNode(x, y, color = "grey", w = 50) {
@@ -207,6 +205,7 @@ class Road {
   }
 
   createZone(w = 50, index) {
+    let areaLength=this.areaZone.length
     let length = this.segments.length - 1;
     let A = createVector(
       this.roadBase[this.segments[index ? index : this.segments.index].start].x,
@@ -256,17 +255,16 @@ class Road {
       );
 
       mag += 5;
-      this.zoneDeletor();
+      this.zoneDeletor(areaLength);
     }
-    this.zoneDeletor();
+   // this.zoneDeletor();
   }
 
-  zoneDeletor() {
-    for (let i = this.areaZone.length - 1; i >= 0; i--) {
+  zoneDeletor(l) {
+    for (let i = this.areaZone.length - 1; i >= l; i--) {
       for (let j = i - 1; j >= 0; j--) {
         const A = this.areaZone[i];
         const B = this.areaZone[j];
-
         const dx = A.position.x - B.position.x;
         const dy = A.position.y - B.position.y;
         const r = A.radius + B.radius;
@@ -291,7 +289,6 @@ class Road {
 
         const cornersA = getCorners(A);
         const cornersB = getCorners(B);
-
         const axes = [];
 
         const addAxes = (corners) => {
@@ -310,10 +307,8 @@ class Road {
             axes.push({ x: nx, y: ny });
           }
         };
-
         addAxes(cornersA);
         addAxes(cornersB);
-
         let collision = true;
 
         for (let axis of axes) {
@@ -347,6 +342,11 @@ class Road {
       }
     }
 
+
+
+
+
+
     for (let i = this.areaZone.length - 1; i >= 0; i--) {
       const circle = this.areaZone[i];
       const P = circle.position;
@@ -356,10 +356,13 @@ class Road {
 
       for (const j in this.segments) {
         if (j === "index") continue;
+        
 
         const seg = this.segments[j];
         const A = seg.startingPosition;
         const B = seg.endingPosition;
+
+        if (distance(circle.position.x,circle.position.y,A.x,A.y)>300) continue;
 
         const AB = { x: B.x - A.x, y: B.y - A.y };
         const AP = { x: P.x - A.x, y: P.y - A.y };
@@ -404,6 +407,8 @@ class Road {
   removeBuildingsCollidingWithRoad(x1, y1, x2, y2, lineWidth = 45) {
     for (let i = building.build.length - 1; i >= 0; i--) {
       const b = building.build[i];
+
+      if (distance(x1,y1,b.position.x,b.position.y)>300) continue;
 
       const hit = this.lineRotatedRectCollision(
         x1,
@@ -464,7 +469,6 @@ class Road {
       return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
     }
 
-    // Line vs rectangle edges
     for (let i = 0; i < 4; i++) {
       const p1 = corners[i];
       const p2 = corners[(i + 1) % 4];
