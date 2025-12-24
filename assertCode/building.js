@@ -95,7 +95,6 @@ class Building {
           this.build[i].position.y
         ) < 300
       ) {
-        console.log(4)
         if (rectRectCollision(this, this.build[i])) {
           return true;
         }
@@ -105,23 +104,31 @@ class Building {
   }
 
   searchForArea() {
+    const VALID_ZONE_COLORS = new Set([
+      "rgba(255, 0, 0, 0.3)",
+      "rgba(0, 0, 255, 0.3)",
+      "rgba(0, 255, 0, 0.3)",
+    ]);
+
     for (let i = 0; i < road.areaZone.length; i++) {
       const area = road.areaZone[i];
-      let color = area.color;
 
       if (area.sold) continue;
 
+      const color = area.color;
+      if (!VALID_ZONE_COLORS.has(color)) continue;
+
       const width = random(70, 150);
       const height = width + random(-20, 20);
+      const angle = area.angle;
 
       let B = Vector.sub(area.position, area.roadPoint);
       B.normalize();
-      B.setMag(height / 2 - 25);
-
+      B.setMag(height / 2 - 15);
       const position = Vector.add(area.position, B);
-      const angle = area.angle;
 
-      let hasCollision = false;
+      let bigCollision = false;
+      console.log(2)
 
       for (const id in road.segments) {
         if (id === "index") continue;
@@ -130,62 +137,70 @@ class Building {
         const start = road.roadBase[seg.start];
         const end = road.roadBase[seg.end];
 
-        console.log(color);
         if (
-          color == "rgba(255, 0, 0, 0.3)" ||
-          color == "rgba(0, 0, 255, 0.3)" ||
-          color == "rgba(0, 255, 0, 0.3)"
+          this.lineRotatedRectCollision(
+            start.x,
+            start.y,
+            end.x,
+            end.y,
+            position.x,
+            position.y,
+            width,
+            height,
+            angle
+          )
         ) {
-          console.log(2);
+          bigCollision = true;
+          break;
+        }
+      }
+
+      if (!bigCollision) {
+        for (let b of this.build) {
           if (
-            this.lineRotatedRectCollision(
-              start.x,
-              start.y,
-              end.x,
-              end.y,
-              position.x,
-              position.y,
-              width,
-              height,
-              angle
+            rectRectCollision(
+              { x: position.x, y: position.y, width, height, angle },
+              b
             )
           ) {
-            hasCollision = true;
-            if (
-              this.lineRotatedRectCollision(
-                start.x,
-                start.y,
-                end.x,
-                end.y,
-                position.x,
-                position.y,
-                50,
-                50,
-                angle
-              )
-            ) {
-              area.sold = true;
-              break;
-            }
+            bigCollision = true;
             break;
           }
         }
       }
-      if (!hasCollision) {
+
+      if (!bigCollision) {
         area.sold = true;
 
-        if (
-          color == "rgba(255, 0, 0, 0.3)" ||
-          color == "rgba(0, 0, 255, 0.3)" ||
-          color == "rgba(0, 255, 0, 0.3)"
-        ) {
-          this.build.push(
-            new Build(position.x, position.y, width, height, angle, color, {
-              segmentIndex: area.segmentIndex,
-              point: area.roadPoint,
-            })
-          );
+        this.build.push(
+          new Build(position.x, position.y, width, height, angle, color, {
+            segmentIndex: area.segmentIndex,
+            point: area.roadPoint,
+          })
+        );
+
+        continue;
+      }
+
+      let minBlocked = false;
+
+     
+      if (!minBlocked) {
+        for (let b of this.build) {
+          if (
+            rectRectCollision(
+              { x: position.x, y: position.y, width: 50, height: 50, angle },
+              b
+            )
+          ) {
+            minBlocked = true;
+            break;
+          }
         }
+      }
+
+      if (minBlocked) {
+        area.sold = true;
       }
     }
   }
@@ -215,7 +230,7 @@ class Building {
       this.width = object.Building[object.select].width;
       this.height = object.Building[object.select].height;
       let collusion = false;
-      this.color="#cd2d2dbd"
+      this.color = "#cd2d2dbd";
 
       for (let i = 0; i < road.areaZone.length; i++) {
         let area = road.areaZone[i];
@@ -280,12 +295,14 @@ class Building {
       this.position.y = y;
       this.width = object.Trees[object.select].width;
       this.height = object.Trees[object.select].height;
-      this.color = "#f700ffff";
+      let collusion = false;
+      this.color = "#cd2d2dbd";
+
+      collusion = this.buildingVSbuildingCollusion();
 
       for (const id in road.segments) {
         if (id === "index") continue;
         let seg = road.segments[id];
-
         let start = road.roadBase[seg.start];
         let end = road.roadBase[seg.end];
 
@@ -302,12 +319,12 @@ class Building {
             this.angle
           )
         ) {
-          this.color = "#cd2d2dbd";
+          collusion = true;
           break;
-        } else {
-          this.color = "#f700ffff";
         }
       }
+
+      this.color = collusion ? "#cd2d2dbd" : "#f700ffff";
 
       ctx.save();
       ctx.translate(this.position.x, this.position.y);

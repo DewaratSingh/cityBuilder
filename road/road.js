@@ -221,7 +221,6 @@ class Road {
 
     let mag = 0;
     while (mag <= Cmag) {
-      console.log(1);
       let step = C.copy().mult(mag);
       let D = Vector.add(A, step);
       let perpLeft = createVector(-C.y, C.x);

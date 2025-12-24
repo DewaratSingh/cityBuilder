@@ -43,7 +43,6 @@
     </div>
     <div id="constructionline"></div>
 
-    
     <script src="./nessary/uitask.js"></script>
     <script src="./nessary/Camera.js"></script>
     <script src="./nessary/vector.js"></script>
@@ -78,19 +77,17 @@
         let realDelta = now - lastReal;
         lastReal = now;
 
-        // clamp to avoid huge jumps
         realDelta = Math.min(realDelta, 100);
 
         Time += realDelta * timespeed;
 
-        // update UI
         document.getElementById("time").innerHTML = new Date(
           Time
         ).toLocaleDateString("en-IN");
 
-        // ---- 2 MONTH LOGIC ----
         if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
-          //building.searchForArea();
+          console.log(1)
+          building.searchForArea();
           lastAreaSearchTime = Time;
         }
       }, 100);
@@ -99,16 +96,16 @@
 
       let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
 
-      let FPS=0
-      setInterval(()=>{
-       // console.log(FPS,camera.mouse.zoom)
-        FPS=0
-      },1000)
+      let FPS = 0;
+      setInterval(() => {
+        // console.log(FPS,camera.mouse.zoom)
+        FPS = 0;
+      }, 1000);
 
       function animation() {
-        FPS++
+        FPS++;
         camera.restore(ctx);
-        camera.setZoom()
+        camera.setZoom();
         building.draw(ctx, camera.mouse.move);
         road.draw(ctx, camera.mouse.move, zone);
 

@@ -27,8 +27,14 @@ function rectRectCollision(A, B) {
   const hwB = B.width / 2;
   const hhB = B.height / 2;
 
-  const dx = B.position.x - A.position.x;
-  const dy = B.position.y - A.position.y;
+  const ax = A.position ? A.position.x : A.x;
+  const ay = A.position ? A.position.y : A.y;
+
+  const bx = B.position ? B.position.x : B.x;
+  const by = B.position ? B.position.y : B.y;
+
+  const dx = bx - ax;
+  const dy = by - ay;
 
   for (let axis of axes) {
     const dist = Math.abs(dx * axis.x + dy * axis.y);
