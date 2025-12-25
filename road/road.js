@@ -14,7 +14,14 @@ class Road {
 
   addNode(x, y, color = "grey", w = 50) {
     const id = this.roadBase.index++;
-    this.roadBase[id] = new Circle(x, y, color, w);
+    this.roadBase[id] = new Circle(
+      x,
+      y,
+      color,
+      w,
+      null,
+      window.contry.getChunkIndex(camera.mouse.move.x, camera.mouse.move.y)
+    );
     return id;
   }
 
@@ -24,7 +31,13 @@ class Road {
 
   addSegment(key, color = "grey", w = 50, endKey) {
     const id = ++this.segments.index;
-    this.segments[id] = new Segment(key, color, w, endKey);
+    this.segments[id] = new Segment(
+      key,
+      color,
+      w,
+      endKey,
+      window.contry.getChunkIndex(camera.mouse.move.x, camera.mouse.move.y)
+    );
     return id;
   }
 
@@ -234,7 +247,8 @@ class Road {
           w,
           C.angle(),
           index ? index : this.segments.index,
-          D
+          D,
+          window.contry.getChunkIndex(finalPosLeft.x,finalPosLeft.y)
         )
       );
 
@@ -249,7 +263,8 @@ class Road {
           w,
           C.angle(),
           index ? index : this.segments.index,
-          D
+          D,
+          window.contry.getChunkIndex(finalPosRight.x,finalPosRight.y)
         )
       );
 

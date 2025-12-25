@@ -1,5 +1,5 @@
 class AreaZone {
-  constructor(x, y, w, h, a,index,point) {
+  constructor(x, y, w, h, a,index,point,chunk) {
     this.position = createVector(x, y);
     this.roadPoint = point;
     this.segmentIndex = index;
@@ -9,6 +9,7 @@ class AreaZone {
     this.angle = a;
     this.color = "#45454572";
     this.sold=false;
+    this.chunk=chunk;
   }
 
   static drawZone(zone) {

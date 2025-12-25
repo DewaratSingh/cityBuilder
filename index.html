@@ -45,6 +45,8 @@
 
     <script src="./nessary/uitask.js"></script>
     <script src="./nessary/Camera.js"></script>
+    <script src="./map/chunck.js"></script>
+    <script src="./map/contry.js"></script>
     <script src="./nessary/vector.js"></script>
     <script src="./nessary/util.js"></script>
     <script src="./road/Circle.js"></script>
@@ -86,30 +88,35 @@
         ).toLocaleDateString("en-IN");
 
         if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
-          console.log(1)
           building.searchForArea();
           lastAreaSearchTime = Time;
         }
       }, 100);
 
       let camera = new Camera(canvas);
+      window.camera=camera
 
       let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
 
       let FPS = 0;
       setInterval(() => {
-        // console.log(FPS,camera.mouse.zoom)
+        //console.log(FPS,camera.mouse.zoom)
         FPS = 0;
       }, 1000);
+
+      let contry = new Country(64,64);
+      window.contry=contry
 
       function animation() {
         FPS++;
         camera.restore(ctx);
         camera.setZoom();
+        contry.draw(ctx);
         building.draw(ctx, camera.mouse.move);
         road.draw(ctx, camera.mouse.move, zone);
 
         AreaZone.drawZone(zone);
+        
         requestAnimationFrame(animation);
       }
       animation();
@@ -155,6 +162,10 @@
               camera.mouse.offset = {
                 x: camera.mouse.move.x - camera.mouse.down.x,
                 y: camera.mouse.move.y - camera.mouse.down.y,
+              };
+              camera.Offset = {
+                x: camera.Offset.x + camera.mouse.offset.x,
+                y: camera.Offset.y + camera.mouse.offset.y,
               };
             }
             break;

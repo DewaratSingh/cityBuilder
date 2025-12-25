@@ -1,9 +1,10 @@
 class Segment {
-  constructor(i, color = "grey", width = 50, j = i) {
+  constructor(i, color = "grey", width = 50, j = i,chunk) {
     this.color = color;
     this.width = width;
     this.start = i;
     this.end = j;
+    this.chunk=chunk;
   }
 
   get startingPosition() {

@@ -128,7 +128,6 @@ class Building {
       const position = Vector.add(area.position, B);
 
       let bigCollision = false;
-      console.log(2)
 
       for (const id in road.segments) {
         if (id === "index") continue;
@@ -173,10 +172,19 @@ class Building {
         area.sold = true;
 
         this.build.push(
-          new Build(position.x, position.y, width, height, angle, color, {
-            segmentIndex: area.segmentIndex,
-            point: area.roadPoint,
-          })
+          new Build(
+            position.x,
+            position.y,
+            width,
+            height,
+            angle,
+            color,
+            {
+              segmentIndex: area.segmentIndex,
+              point: area.roadPoint,
+            },
+            window.contry.getChunkIndex(this.position.x, this.position.y)
+          )
         );
 
         continue;
@@ -184,7 +192,6 @@ class Building {
 
       let minBlocked = false;
 
-     
       if (!minBlocked) {
         for (let b of this.build) {
           if (
@@ -215,7 +222,8 @@ class Building {
           this.height,
           this.angle,
           "#ff8400ff",
-          this.zone
+          this.zone,
+          window.contry.getChunkIndex(this.position.x, this.position.y)
         )
       );
     }

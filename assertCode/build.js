@@ -1,11 +1,12 @@
 class Build {
-  constructor(x = 0, y = 0, w = 0, h = 0, a = 0, color = "#cd2d2dbd",zone) {
+  constructor(x = 0, y = 0, w = 0, h = 0, a = 0, color = "#cd2d2dbd",zone,chunk) {
     this.position = createVector(x, y);
     this.segmentIndexAndPoint = zone;
     this.height = h;
     this.width = w;
     this.angle = a;
     this.color = color;
+    this.chunk=chunk;
   }
 
   draw(ctx) {

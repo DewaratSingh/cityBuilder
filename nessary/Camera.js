@@ -11,10 +11,9 @@ class Camera {
       drag: false,
       offset: { x: 0, y: 0 },
     };
-    this.ROM = {};
   }
 
-  updateRAMandROM() {}
+
 
   getMousePosition(e) {
     return {
@@ -23,8 +22,8 @@ class Camera {
     };
   }
   setZoom() {
-    if (this.mouse.zoom > 2 && Tab != "Move") {
-      this.mouse.zoom +=  -0.1;
+    if (this.mouse.zoom > 7 && Tab != "Move") {
+      this.mouse.zoom += -0.1;
       this.mouse.zoom = Math.max(1, Math.min(5, this.mouse.zoom));
     }
   }
@@ -32,7 +31,7 @@ class Camera {
     let dir = Math.sign(e.deltaY);
     this.mouse.zoom += dir * 0.1;
     if (Tab == "Move") {
-      this.mouse.zoom = Math.max(1, Math.min(5, this.mouse.zoom));
+      this.mouse.zoom = Math.max(1, Math.min(7, this.mouse.zoom));
     } else {
       this.mouse.zoom = Math.max(1, Math.min(2, this.mouse.zoom));
     }

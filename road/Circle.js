@@ -1,11 +1,12 @@
 class Circle {
-  constructor(x = 0, y = 0, color = "grey", width = 50, mouse) {
+  constructor(x = 0, y = 0, color = "grey", width = 50, mouse,chunk) {
     this.color = color;
     this.width = width;
     this.x = x;
     this.y = y;
     this.mouse = mouse;
-    this.segment=[]
+    this.segment=[];
+    this.chunk=chunk;
   }
 
   draw(ctx, color, x, y) {

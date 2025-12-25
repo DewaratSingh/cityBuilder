@@ -14,6 +14,7 @@ function randomColor() {
       .padStart(6, "0")
   );
 }
+
 function rectRectCollision(A, B) {
   const axes = [
     { x: Math.cos(A.angle), y: Math.sin(A.angle) },
@@ -54,3 +55,4 @@ function rectRectCollision(A, B) {
 
   return true;
 }
+
