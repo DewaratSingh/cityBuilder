@@ -1,18 +1,18 @@
 class Segment {
-  constructor(i, color = "grey", width = 50, j = i,chunk) {
+  constructor(i, color = "grey", width = 50, j = i, chunk) {
     this.color = color;
     this.width = width;
     this.start = i;
     this.end = j;
-    this.chunk=chunk;
+    this.chunk = chunk;
   }
 
   get startingPosition() {
-    return road.roadBase[this.start];
+    return window.road.roadBase[this.start];
   }
 
   get endingPosition() {
-    return road.roadBase[this.end];
+    return window.road.roadBase[this.end];
   }
 
   length() {

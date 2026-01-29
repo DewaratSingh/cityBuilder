@@ -32,7 +32,7 @@ let object = {
       color: "rgba(0, 255, 0, 0.3)",
       width: 50,
       height: 50,
-    },{
+    }, {
       name: "Residelppp",
       color: "rgba(156, 141, 41, 0.3)",
       width: 10,
@@ -86,9 +86,9 @@ function tabChange(e, self) {
   Tab = self.innerText;
 
   if (Tab == "Road") {
-    road.editMode = true;
+    window.road.editMode = true;
   } else {
-    road.editMode = false;
+    window.road.editMode = false;
   }
   if (Tab == "Move") {
     document.getElementById("selector").style.height = "55px";

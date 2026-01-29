@@ -1,255 +1,243 @@
 <html>
-  <head>
-    <title>City Builder</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <canvas id="canvas"></canvas>
-    <div id="time"></div>
-    <div id="selector">
-      <div id="option">
-        <div
-          onmousedown="event.stopPropagation()"
-          onclick="tabChange(event,this)"
-        >
-          Move
-        </div>
-        <div
-          onmousedown="event.stopPropagation()"
-          onclick="tabChange(event,this)"
-        >
-          Road
-        </div>
-        <div
-          onmousedown="event.stopPropagation()"
-          onclick="tabChange(event,this)"
-        >
-          Zone
-        </div>
-        <div
-          onmousedown="event.stopPropagation()"
-          onclick="tabChange(event,this)"
-        >
-          Trees
-        </div>
-        <div
-          onmousedown="event.stopPropagation()"
-          onclick="tabChange(event,this)"
-        >
-          Building
-        </div>
+
+<head>
+  <title>City Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="time"></div>
+  <div id="selector">
+    <div id="option">
+      <div onmousedown="event.stopPropagation()" onclick="tabChange(event,this)">
+        Move
       </div>
-      <div id="obj" class="your-div"></div>
+      <div onmousedown="event.stopPropagation()" onclick="tabChange(event,this)">
+        Road
+      </div>
+      <div onmousedown="event.stopPropagation()" onclick="tabChange(event,this)">
+        Zone
+      </div>
+      <div onmousedown="event.stopPropagation()" onclick="tabChange(event,this)">
+        Trees
+      </div>
+      <div onmousedown="event.stopPropagation()" onclick="tabChange(event,this)">
+        Building
+      </div>
     </div>
-    <div id="constructionline"></div>
+    <div id="obj" class="your-div"></div>
+  </div>
+  <div id="constructionline"></div>
 
-    <script src="./nessary/uitask.js"></script>
-    <script src="./nessary/Camera.js"></script>
-    <script src="./map/chunck.js"></script>
-    <script src="./map/contry.js"></script>
-    <script src="./nessary/vector.js"></script>
-    <script src="./nessary/util.js"></script>
-    <script src="./road/Circle.js"></script>
-    <script src="./road/segment.js"></script>
-    <script src="./road/zone.js"></script>
-    <script src="./road/road.js"></script>
-    <script src="./assertCode/build.js"></script>
-    <script src="./assertCode/building.js"></script>
+  <script src="./nessary/uitask.js"></script>
+  <script src="./nessary/Camera.js"></script>
+  <script src="./map/chunck.js"></script>
+  <script src="./map/contry.js"></script>
+  <script src="./nessary/vector.js"></script>
+  <script src="./nessary/util.js"></script>
+  <script src="./road/Circle.js"></script>
+  <script src="./road/segment.js"></script>
+  <script src="./road/zone.js"></script>
+  <script src="./road/road.js"></script>
+  <script src="./assertCode/build.js"></script>
+  <script src="./assertCode/building.js"></script>
 
-    <script>
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
 
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-      road = new Road();
+    window.road = new Road();
 
-      let building = new Building();
+    window.building = new Building();
 
-      Time = Date.now();
-      let lastReal = Date.now();
-      timespeed = 1_000_000;
-      let lastAreaSearchTime = Time;
-      const DAY_MS = 24 * 60 * 60 * 1000;
-      const TWO_MONTHS_MS = 60 * DAY_MS;
+    Time = Date.now();
+    let lastReal = Date.now();
+    timespeed = 1_000_000;
+    let lastAreaSearchTime = Time;
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const TWO_MONTHS_MS = 60 * DAY_MS;
 
-      setInterval(() => {
-        const now = Date.now();
-        let realDelta = now - lastReal;
-        lastReal = now;
+    setInterval(() => {
+      const now = Date.now();
+      let realDelta = now - lastReal;
+      lastReal = now;
 
-        realDelta = Math.min(realDelta, 100);
+      realDelta = Math.min(realDelta, 100);
 
-        Time += realDelta * timespeed;
+      Time += realDelta * timespeed;
 
-        document.getElementById("time").innerHTML = new Date(
-          Time
-        ).toLocaleDateString("en-IN");
+      document.getElementById("time").innerHTML = new Date(
+        Time
+      ).toLocaleDateString("en-IN");
 
-        if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
-          building.searchForArea();
-          lastAreaSearchTime = Time;
-        }
-      }, 100);
-
-      let camera = new Camera(canvas);
-      window.camera=camera
-
-      let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
-
-      let FPS = 0;
-      setInterval(() => {
-        //console.log(FPS,camera.mouse.zoom)
-        FPS = 0;
-      }, 1000);
-
-      let contry = new Country(64,64);
-      window.contry=contry
-
-      function animation() {
-        FPS++;
-        camera.restore(ctx);
-        camera.setZoom();
-        contry.draw(ctx);
-        building.draw(ctx, camera.mouse.move);
-        road.draw(ctx, camera.mouse.move, zone);
-
-        AreaZone.drawZone(zone);
-        
-        requestAnimationFrame(animation);
+      if (Time - lastAreaSearchTime >= TWO_MONTHS_MS) {
+        window.building.searchForArea();
+        lastAreaSearchTime = Time;
       }
-      animation();
+    }, 100);
 
-      document.addEventListener("mousedown", (e) => {
-        camera.mouse.down = camera.getMousePosition(e);
-        switch (Tab) {
-          case "Move":
+    let camera = new Camera(canvas);
+    window.camera = camera
+
+    let zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
+
+    let FPS = 0;
+    setInterval(() => {
+      //console.log(FPS,camera.mouse.zoom)
+      FPS = 0;
+    }, 1000);
+
+    let contry = new Country(64, 64, ctx);
+    window.contry = contry
+
+    function animation() {
+      FPS++;
+      camera.restore(ctx);
+      camera.setZoom();
+      contry.draw(ctx);
+      window.building.draw(ctx, camera.mouse.move);
+      window.road.draw(ctx, camera.mouse.move, zone);
+
+      AreaZone.drawZone(zone);
+
+      requestAnimationFrame(animation);
+    }
+    animation();
+
+    document.addEventListener("mousedown", (e) => {
+      camera.mouse.down = camera.getMousePosition(e);
+      switch (Tab) {
+        case "Move":
+          camera.mouse.drag = true;
+          camera.mouse.down.is = true;
+          break;
+        case "Road":
+          if (e.button == 1) {
             camera.mouse.drag = true;
-            camera.mouse.down.is = true;
-            break;
-          case "Road":
-            if (e.button == 1) {
-              camera.mouse.drag = true;
-            }
-            if (e.button == 0) {
-              road.createStartSegment(camera.getMousePosition(e));
-              camera.mouse.down.is = true;
-            }
-            if (e.button == 2) {
-              road.deleteSegmentAt(camera.getMousePosition(e));
-            }
-            break;
-          case "Zone":
-            zone.start = camera.getMousePosition(e);
-            zone.move = camera.getMousePosition(e);
-            zone.down = true;
-            break;
-          case "Building":
-            building.placeBuilding();
-            break;
-          case "Trees":
-            building.placeBuilding();
-            break;
-        }
-      });
-
-      document.addEventListener("mousemove", (e) => {
-        camera.mouse.move = camera.getMousePosition(e);
-        switch (Tab) {
-          case "Move":
-            if (camera.mouse.drag) {
-              camera.mouse.offset = {
-                x: camera.mouse.move.x - camera.mouse.down.x,
-                y: camera.mouse.move.y - camera.mouse.down.y,
-              };
-              camera.Offset = {
-                x: camera.Offset.x + camera.mouse.offset.x,
-                y: camera.Offset.y + camera.mouse.offset.y,
-              };
-            }
-            break;
-          case "Road":
-            if (camera.mouse.down.is) {
-              road.createEndSegmentMove(camera.getMousePosition(e));
-            }
-            if (camera.mouse.drag) {
-              camera.mouse.offset = {
-                x: camera.mouse.move.x - camera.mouse.down.x,
-                y: camera.mouse.move.y - camera.mouse.down.y,
-              };
-            }
-            break;
-          case "Zone":
-            if (zone.down) {
-              zone.move = camera.getMousePosition(e);
-            }
-            break;
-        }
-      });
-
-      document.addEventListener("mouseup", (e) => {
-        switch (Tab) {
-          case "Move":
-            camera.mouse.down.is = false;
-            if (camera.mouse.drag) {
-              camera.Offset = {
-                x: camera.Offset.x + camera.mouse.offset.x,
-                y: camera.Offset.y + camera.mouse.offset.y,
-              };
-              let zoom = camera.mouse.zoom;
-              camera.mouse = {
-                down: { x: 0, y: 0, is: false },
-                move: { x: 0, y: 0 },
-                up: { x: 0, y: 0 },
-                zoom: zoom,
-                drag: false,
-                offset: { x: 0, y: 0 },
-              };
-            }
-            break;
-          case "Road":
-            if (camera.mouse.down.is) {
-              road.createEndSegment(camera.getMousePosition(e));
-              camera.mouse.down.is = false;
-            }
-            if (camera.mouse.drag) {
-              camera.Offset = {
-                x: camera.Offset.x + camera.mouse.offset.x,
-                y: camera.Offset.y + camera.mouse.offset.y,
-              };
-              let zoom = camera.mouse.zoom;
-              camera.mouse = {
-                down: { x: 0, y: 0, is: false },
-                move: { x: 0, y: 0 },
-                up: { x: 0, y: 0 },
-                zoom: zoom,
-                drag: false,
-                offset: { x: 0, y: 0 },
-              };
-            }
-            break;
-          case "Zone":
-            zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
-            break;
-        }
-      });
-      document.addEventListener("mousewheel", (e) => {
-        camera.zoom(e);
-      });
-
-      window.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "q") {
-          e.preventDefault();
-          if (road) {
-            road.saveToLocalStorage();
-            console.log("Road saved to localStorage");
-            alert("Saved");
           }
-        }
-      });
+          if (e.button == 0) {
+            window.road.createStartSegment(camera.getMousePosition(e));
+            camera.mouse.down.is = true;
+          }
+          if (e.button == 2) {
+            window.road.deleteSegmentAt(camera.getMousePosition(e));
+          }
+          break;
+        case "Zone":
+          zone.start = camera.getMousePosition(e);
+          zone.move = camera.getMousePosition(e);
+          zone.down = true;
+          break;
+        case "Building":
+          window.building.placeBuilding();
+          break;
+        case "Trees":
+          window.building.placeBuilding();
+          break;
+      }
+    });
 
-      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-    </script>
-  </body>
+    document.addEventListener("mousemove", (e) => {
+      camera.mouse.move = camera.getMousePosition(e);
+      switch (Tab) {
+        case "Move":
+          if (camera.mouse.drag) {
+            camera.mouse.offset = {
+              x: camera.mouse.move.x - camera.mouse.down.x,
+              y: camera.mouse.move.y - camera.mouse.down.y,
+            };
+            camera.Offset = {
+              x: camera.Offset.x + camera.mouse.offset.x,
+              y: camera.Offset.y + camera.mouse.offset.y,
+            };
+          }
+          break;
+        case "Road":
+          if (camera.mouse.down.is) {
+            window.road.createEndSegmentMove(camera.getMousePosition(e));
+          }
+          if (camera.mouse.drag) {
+            camera.mouse.offset = {
+              x: camera.mouse.move.x - camera.mouse.down.x,
+              y: camera.mouse.move.y - camera.mouse.down.y,
+            };
+          }
+          break;
+        case "Zone":
+          if (zone.down) {
+            zone.move = camera.getMousePosition(e);
+          }
+          break;
+      }
+    });
+
+    document.addEventListener("mouseup", (e) => {
+      switch (Tab) {
+        case "Move":
+          camera.mouse.down.is = false;
+          if (camera.mouse.drag) {
+            camera.Offset = {
+              x: camera.Offset.x + camera.mouse.offset.x,
+              y: camera.Offset.y + camera.mouse.offset.y,
+            };
+            let zoom = camera.mouse.zoom;
+            camera.mouse = {
+              down: { x: 0, y: 0, is: false },
+              move: { x: 0, y: 0 },
+              up: { x: 0, y: 0 },
+              zoom: zoom,
+              drag: false,
+              offset: { x: 0, y: 0 },
+            };
+          }
+          break;
+        case "Road":
+          if (camera.mouse.down.is) {
+            window.road.createEndSegment(camera.getMousePosition(e));
+            camera.mouse.down.is = false;
+          }
+          if (camera.mouse.drag) {
+            camera.Offset = {
+              x: camera.Offset.x + camera.mouse.offset.x,
+              y: camera.Offset.y + camera.mouse.offset.y,
+            };
+            let zoom = camera.mouse.zoom;
+            camera.mouse = {
+              down: { x: 0, y: 0, is: false },
+              move: { x: 0, y: 0 },
+              up: { x: 0, y: 0 },
+              zoom: zoom,
+              drag: false,
+              offset: { x: 0, y: 0 },
+            };
+          }
+          break;
+        case "Zone":
+          zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
+          break;
+      }
+    });
+    document.addEventListener("mousewheel", (e) => {
+      camera.zoom(e);
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "q") {
+        e.preventDefault();
+        if (window.road) {
+          window.road.saveToLocalStorage();
+          console.log("Road saved to localStorage");
+          alert("Saved");
+        }
+      }
+    });
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  </script>
+</body>
+
 </html>

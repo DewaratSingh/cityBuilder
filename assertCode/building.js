@@ -12,6 +12,33 @@ class Building {
     this.autoGenerator = {};
   }
 
+  syncToChunks() {
+    console.log("Building: Syncing to Chunks. RAM Size:", this.build.length);
+    // 1. Reset ROM for active chunks
+    window.contry.loadChunk.forEach(chunk => {
+      chunk.build = [];
+    });
+
+    // 2. Dump RAM to ROM
+    this.build.forEach(b => {
+      if (b.chunk) {
+        if (
+          window.contry.chunks[b.chunk.x] &&
+          window.contry.chunks[b.chunk.x][b.chunk.y]
+        ) {
+          window.contry.chunks[b.chunk.x][b.chunk.y].build.push(b);
+        }
+      }
+    });
+  }
+
+  loadFromChunks() {
+    this.build = [];
+    window.contry.loadChunk.forEach((chunk) => {
+      this.build.push(...chunk.build);
+    });
+  }
+
   lineRotatedRectCollision(
     x1,
     y1,
@@ -110,8 +137,8 @@ class Building {
       "rgba(0, 255, 0, 0.3)",
     ]);
 
-    for (let i = 0; i < road.areaZone.length; i++) {
-      const area = road.areaZone[i];
+    for (let i = 0; i < window.road.areaZone.length; i++) {
+      const area = window.road.areaZone[i];
 
       if (area.sold) continue;
 
@@ -129,12 +156,12 @@ class Building {
 
       let bigCollision = false;
 
-      for (const id in road.segments) {
+      for (const id in window.road.segments) {
         if (id === "index") continue;
 
-        const seg = road.segments[id];
-        const start = road.roadBase[seg.start];
-        const end = road.roadBase[seg.end];
+        const seg = window.road.segments[id];
+        const start = window.road.roadBase[seg.start];
+        const end = window.road.roadBase[seg.end];
 
         if (
           this.lineRotatedRectCollision(
@@ -171,21 +198,34 @@ class Building {
       if (!bigCollision) {
         area.sold = true;
 
-        this.build.push(
-          new Build(
-            position.x,
-            position.y,
-            width,
-            height,
-            angle,
-            color,
-            {
-              segmentIndex: area.segmentIndex,
-              point: area.roadPoint,
-            },
-            window.contry.getChunkIndex(this.position.x, this.position.y)
-          )
+        const chunkIdx = window.contry.getChunkIndex(this.position.x, this.position.y);
+        const newBuild = new Build(
+          position.x,
+          position.y,
+          width,
+          height,
+          angle,
+          color,
+          {
+            segmentIndex: area.segmentIndex,
+            point: area.roadPoint,
+          },
+          chunkIdx
         );
+
+        let isActive = false;
+        if (chunkIdx) {
+          const chunk = window.contry.chunks[chunkIdx.x][chunkIdx.y];
+          if (window.contry.loadChunk.includes(chunk)) {
+            isActive = true;
+          } else {
+            chunk.build.push(newBuild);
+          }
+        }
+
+        if (isActive || !chunkIdx) {
+          this.build.push(newBuild);
+        }
 
         continue;
       }
@@ -214,18 +254,31 @@ class Building {
 
   placeBuilding() {
     if (this.color == "#f700ffff") {
-      this.build.push(
-        new Build(
-          this.position.x,
-          this.position.y,
-          this.width,
-          this.height,
-          this.angle,
-          "#ff8400ff",
-          this.zone,
-          window.contry.getChunkIndex(this.position.x, this.position.y)
-        )
+      const chunkIdx = window.contry.getChunkIndex(this.position.x, this.position.y);
+      const newBuild = new Build(
+        this.position.x,
+        this.position.y,
+        this.width,
+        this.height,
+        this.angle,
+        "#ff8400ff",
+        this.zone,
+        chunkIdx
       );
+
+      let isActive = false;
+      if (chunkIdx) {
+        const chunk = window.contry.chunks[chunkIdx.x][chunkIdx.y];
+        if (window.contry.loadChunk.includes(chunk)) {
+          isActive = true;
+        } else {
+          chunk.build.push(newBuild);
+        }
+      }
+
+      if (isActive || !chunkIdx) {
+        this.build.push(newBuild);
+      }
     }
   }
 
@@ -240,8 +293,8 @@ class Building {
       let collusion = false;
       this.color = "#cd2d2dbd";
 
-      for (let i = 0; i < road.areaZone.length; i++) {
-        let area = road.areaZone[i];
+      for (let i = 0; i < window.road.areaZone.length; i++) {
+        let area = window.road.areaZone[i];
         let d = distance(x, y, area.position.x, area.position.y);
 
         if (d < 25) {
@@ -254,17 +307,17 @@ class Building {
           this.position = Vector.add(area.position, B);
 
           this.zone = {
-            segmentIndex: road.areaZone.segmentIndex,
-            point: road.areaZone.roadPoint,
+            segmentIndex: window.road.areaZone.segmentIndex,
+            point: window.road.areaZone.roadPoint,
           };
 
           collusion = this.buildingVSbuildingCollusion();
 
-          for (const id in road.segments) {
+          for (const id in window.road.segments) {
             if (id === "index") continue;
-            let seg = road.segments[id];
-            let start = road.roadBase[seg.start];
-            let end = road.roadBase[seg.end];
+            let seg = window.road.segments[id];
+            let start = window.road.roadBase[seg.start];
+            let end = window.road.roadBase[seg.end];
 
             if (
               this.lineRotatedRectCollision(
@@ -308,11 +361,11 @@ class Building {
 
       collusion = this.buildingVSbuildingCollusion();
 
-      for (const id in road.segments) {
+      for (const id in window.road.segments) {
         if (id === "index") continue;
-        let seg = road.segments[id];
-        let start = road.roadBase[seg.start];
-        let end = road.roadBase[seg.end];
+        let seg = window.road.segments[id];
+        let start = window.road.roadBase[seg.start];
+        let end = window.road.roadBase[seg.end];
 
         if (
           this.lineRotatedRectCollision(
@@ -346,5 +399,56 @@ class Building {
       ctx.fill();
       ctx.restore();
     }
+  }
+
+  saveToLocalStorage() {
+    this.syncToChunks();
+    const buildingsData = [];
+
+    // Iterate ROM
+    const chunks = window.contry.chunks;
+    for (let y = 0; y < chunks.length; y++) {
+      for (let x = 0; x < chunks[y].length; x++) {
+        chunks[y][x].build.forEach(b => {
+          buildingsData.push({
+            x: b.position.x,
+            y: b.position.y,
+            w: b.width,
+            h: b.height,
+            angle: b.angle,
+            color: b.color,
+            zone: b.segmentIndexAndPoint
+          });
+        });
+      }
+    }
+
+    localStorage.setItem("BUILDING_DATA", JSON.stringify(buildingsData));
+  }
+
+  loadFromLocalStorage() {
+    const raw = localStorage.getItem("BUILDING_DATA");
+    if (!raw) return;
+    const data = JSON.parse(raw);
+
+    // Clear ROM
+    const chunks = window.contry.chunks;
+    for (let y = 0; y < chunks.length; y++) {
+      for (let x = 0; x < chunks[y].length; x++) {
+        chunks[y][x].build = [];
+      }
+    }
+
+    // Populate ROM
+    data.forEach(b => {
+      const chunkIdx = window.contry.getChunkIndex(b.x, b.y);
+      if (chunkIdx) {
+        const build = new Build(b.x, b.y, b.w, b.h, b.angle, b.color, b.zone, chunkIdx);
+        window.contry.chunks[chunkIdx.x][chunkIdx.y].build.push(build);
+      }
+    });
+
+    // Populate RAM
+    this.loadFromChunks();
   }
 }

@@ -1,8 +1,9 @@
 class Country {
-  constructor(w, h) {
+  constructor(w, h, ctx) {
     this.width = w;
     this.height = h;
     this.chunks = [];
+    this.loadChunk = [];
 
     for (let y = 0; y < h; y++) {
       this.chunks[y] = [];
@@ -12,6 +13,11 @@ class Country {
         this.chunks[y][x] = new Chunck(worldX, worldY, y, x);
       }
     }
+
+    this.ChunkLoading(ctx);
+    this.cameraChunk = null;
+    this.lastLoadPosition = null;
+    this.lastZoom = window.camera.mouse.zoom;
   }
 
   getChunkIndex(x, y) {
@@ -31,7 +37,7 @@ class Country {
     return { x: chunkY, y: chunkX };
   }
 
-  draw(ctx) {
+  ChunkLoading(ctx) {
     const camera = window.camera;
     const zoom = camera.mouse.zoom;
     const chunkSize = 512;
@@ -66,10 +72,52 @@ class Country {
       Math.floor(bottom / chunkSize + this.height / 2)
     );
 
+    this.loadChunk = [];
     for (let y = startY; y <= endY; y++) {
       for (let x = startX; x <= endX; x++) {
-        this.chunks[y][x].draw(ctx);
+        this.loadChunk.push(this.chunks[y][x]);
       }
     }
+  }
+
+  draw(ctx) {
+    const zoom = window.camera.mouse.zoom;
+    const cam = window.camera.getMousePosition({
+      clientX: ctx.canvas.width / 2,
+      clientY: ctx.canvas.height / 2,
+    });
+
+    const { x, y } = this.getChunkIndex(cam.x, cam.y);
+
+    if (!this.lastLoadPosition) {
+      this.lastLoadPosition = { x: cam.x, y: cam.y };
+      this.lastZoom = zoom;
+      return;
+    }
+
+    const dist = Math.hypot(
+      cam.x - this.lastLoadPosition.x,
+      cam.y - this.lastLoadPosition.y
+    );
+
+    if (dist > 100 || this.lastZoom !== zoom) {
+      console.log(
+        "Loading chunks:",
+        dist > 100 ? "Distance > 100" : "Zoom changed"
+      );
+      try { if (window.road) window.road.syncToChunks(); } catch (e) { console.error("Road Sync:", e); }
+      try { if (window.building) window.building.syncToChunks(); } catch (e) { console.error("Build Sync:", e); }
+
+      this.ChunkLoading(ctx);
+
+      try { if (window.road) window.road.loadFromChunks(); } catch (e) { console.error("Road Load:", e); }
+      try { if (window.building) window.building.loadFromChunks(); } catch (e) { console.error("Build Load:", e); }
+      this.lastLoadPosition = { x: cam.x, y: cam.y };
+      this.lastZoom = zoom;
+    }
+
+    this.loadChunk.forEach((chunk) => {
+      chunk.draw(ctx);
+    });
   }
 }

@@ -5,6 +5,15 @@ class Chunck {
     this.width = 512;
     this.height = 512;
     this.color = "rgba(255, 1, 1, 0.15)";
+    this.build = [];
+    this.areaZone = [];
+    this.roadBase = {
+      index: 1,
+      0: new Circle(0, 0, "skyblue", 50, true),
+    };
+    this.segments = {
+      index: 0,
+    };
   }
 
   draw(ctx) {

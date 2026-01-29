@@ -12,16 +12,113 @@ class Road {
     this.editMode = false;
   }
 
+  syncToChunks() {
+    console.log("Road: Syncing to Chunks. RAM Size:", Object.keys(this.roadBase).length);
+    // 1. Reset active chunks ROM
+    window.contry.loadChunk.forEach((chunk) => {
+      chunk.roadBase = {};
+      chunk.segments = {};
+      chunk.areaZone = [];
+    });
+
+    // 2. Dump RAM to ROM (RoadBase)
+    for (const key in this.roadBase) {
+      if (key === "index") continue;
+      const node = this.roadBase[key];
+      if (node.chunk) {
+        if (
+          window.contry.chunks[node.chunk.x] &&
+          window.contry.chunks[node.chunk.x][node.chunk.y]
+        ) {
+          window.contry.chunks[node.chunk.x][node.chunk.y].roadBase[key] = node;
+        }
+      }
+    }
+
+    // 3. Dump RAM to ROM (Segments)
+    for (const key in this.segments) {
+      if (key === "index") continue;
+      const seg = this.segments[key];
+      if (seg.chunk) {
+        if (
+          window.contry.chunks[seg.chunk.x] &&
+          window.contry.chunks[seg.chunk.x][seg.chunk.y]
+        ) {
+          window.contry.chunks[seg.chunk.x][seg.chunk.y].segments[key] = seg;
+        }
+      }
+    }
+
+    // 4. Dump RAM to ROM (AreaZone)
+    this.areaZone.forEach((zone) => {
+      if (zone.chunk) {
+        if (
+          window.contry.chunks[zone.chunk.x] &&
+          window.contry.chunks[zone.chunk.x][zone.chunk.y]
+        ) {
+          window.contry.chunks[zone.chunk.x][zone.chunk.y].areaZone.push(zone);
+        }
+      }
+    });
+  }
+
+  loadFromChunks() {
+    // 1. Clear RAM (preserve indices)
+    const currentRoadBaseIndex = this.roadBase.index;
+    this.roadBase = {
+      index: currentRoadBaseIndex,
+      0: new Circle(0, 0, "skyblue", 50, true),
+    };
+    const currentSegmentsIndex = this.segments.index;
+    this.segments = {
+      index: currentSegmentsIndex,
+    };
+    this.areaZone = [];
+
+    // 2. Load from NEW active chunks
+    window.contry.loadChunk.forEach((chunk) => {
+      // Merge roadBase
+      for (const key in chunk.roadBase) {
+        this.roadBase[key] = chunk.roadBase[key];
+      }
+      // Merge segments
+      for (const key in chunk.segments) {
+        this.segments[key] = chunk.segments[key];
+      }
+      // Merge areaZone
+      this.areaZone.push(...chunk.areaZone);
+    });
+  }
+
   addNode(x, y, color = "grey", w = 50) {
     const id = this.roadBase.index++;
-    this.roadBase[id] = new Circle(
+    const chunkIdx = window.contry.getChunkIndex(x, y);
+    const node = new Circle(
       x,
       y,
       color,
       w,
       null,
-      window.contry.getChunkIndex(camera.mouse.move.x, camera.mouse.move.y)
+      chunkIdx
     );
+
+    // Check if chunk is active
+    let isActive = false;
+    if (chunkIdx) {
+      const chunk = window.contry.chunks[chunkIdx.x][chunkIdx.y];
+      if (window.contry.loadChunk.includes(chunk)) {
+        isActive = true;
+      } else {
+        // Inactive: Add directly to ROM
+        chunk.roadBase[id] = node;
+      }
+    }
+
+    // Always add to RAM if active (or if chunkIdx failed, fallback to RAM)
+    if (isActive || !chunkIdx) {
+      this.roadBase[id] = node;
+    }
+
     return id;
   }
 
@@ -31,13 +128,39 @@ class Road {
 
   addSegment(key, color = "grey", w = 50, endKey) {
     const id = ++this.segments.index;
-    this.segments[id] = new Segment(
+
+    // Use the position of the START node to determine the chunk
+    let chunkIdx = null;
+    const startNode = this.roadBase[key];
+    if (startNode) {
+      chunkIdx = window.contry.getChunkIndex(startNode.x, startNode.y);
+    } else {
+      // Fallback: use mouse if node not found (should be rare)
+      chunkIdx = window.contry.getChunkIndex(camera.mouse.move.x, camera.mouse.move.y);
+    }
+
+    const segment = new Segment(
       key,
       color,
       w,
       endKey,
-      window.contry.getChunkIndex(camera.mouse.move.x, camera.mouse.move.y)
+      chunkIdx
     );
+
+    let isActive = false;
+    if (chunkIdx) {
+      const chunk = window.contry.chunks[chunkIdx.x][chunkIdx.y];
+      if (window.contry.loadChunk.includes(chunk)) {
+        isActive = true;
+      } else {
+        chunk.segments[id] = segment;
+      }
+    }
+
+    if (isActive || !chunkIdx) {
+      this.segments[id] = segment;
+    }
+
     return id;
   }
 
@@ -239,34 +362,60 @@ class Road {
       let perpLeft = createVector(-C.y, C.x);
       perpLeft.setMag(45);
       let finalPosLeft = Vector.add(D, perpLeft);
-      this.areaZone.push(
-        new AreaZone(
-          finalPosLeft.x,
-          finalPosLeft.y,
-          w,
-          w,
-          C.angle(),
-          index ? index : this.segments.index,
-          D,
-          window.contry.getChunkIndex(finalPosLeft.x,finalPosLeft.y)
-        )
+      const chunkIdxL = window.contry.getChunkIndex(finalPosLeft.x, finalPosLeft.y);
+      const zone = new AreaZone(
+        finalPosLeft.x,
+        finalPosLeft.y,
+        w,
+        w,
+        C.angle(),
+        index ? index : this.segments.index,
+        D,
+        chunkIdxL
       );
+
+      let isActiveL = false;
+      if (chunkIdxL) {
+        const chunk = window.contry.chunks[chunkIdxL.x][chunkIdxL.y];
+        if (window.contry.loadChunk.includes(chunk)) {
+          isActiveL = true;
+        } else {
+          chunk.areaZone.push(zone);
+        }
+      }
+
+      if (isActiveL || !chunkIdxL) {
+        this.areaZone.push(zone);
+      }
 
       let perpRight = createVector(C.y, -C.x);
       perpRight.setMag(45);
       let finalPosRight = Vector.add(D, perpRight);
-      this.areaZone.push(
-        new AreaZone(
-          finalPosRight.x,
-          finalPosRight.y,
-          w,
-          w,
-          C.angle(),
-          index ? index : this.segments.index,
-          D,
-          window.contry.getChunkIndex(finalPosRight.x,finalPosRight.y)
-        )
+      const chunkIdxR = window.contry.getChunkIndex(finalPosRight.x, finalPosRight.y);
+      const zoneR = new AreaZone(
+        finalPosRight.x,
+        finalPosRight.y,
+        w,
+        w,
+        C.angle(),
+        index ? index : this.segments.index,
+        D,
+        chunkIdxR
       );
+
+      let isActiveR = false;
+      if (chunkIdxR) {
+        const chunk = window.contry.chunks[chunkIdxR.x][chunkIdxR.y];
+        if (window.contry.loadChunk.includes(chunk)) {
+          isActiveR = true;
+        } else {
+          chunk.areaZone.push(zoneR);
+        }
+      }
+
+      if (isActiveR || !chunkIdxR) {
+        this.areaZone.push(zoneR);
+      }
 
       mag += 31;
     }
@@ -348,8 +497,8 @@ class Road {
   }
 
   removeBuildingsCollidingWithRoad(x1, y1, x2, y2, lineWidth = 45) {
-    for (let i = building.build.length - 1; i >= 0; i--) {
-      const b = building.build[i];
+    for (let i = window.building.build.length - 1; i >= 0; i--) {
+      const b = window.building.build[i];
 
       if (distance(x1, y1, b.position.x, b.position.y) > 300) continue;
 
@@ -367,7 +516,7 @@ class Road {
       );
 
       if (hit) {
-        building.build.splice(i, 1);
+        window.building.build.splice(i, 1);
       }
     }
   }
@@ -425,41 +574,65 @@ class Road {
   }
 
   saveToLocalStorage() {
+    // Ensure RAM is synced to ROM before saving
+    this.syncToChunks();
+
     const roadBaseData = {};
+    const segmentsData = [];
+    const areaZoneData = [];
 
-    for (const key in this.roadBase) {
-      if (key === "index") continue;
+    // Iterate over All Chunks (ROM)
+    const chunks = window.contry.chunks;
+    for (let y = 0; y < chunks.length; y++) {
+      for (let x = 0; x < chunks[y].length; x++) {
+        const chunk = chunks[y][x];
 
-      const b = this.roadBase[key];
-      roadBaseData[key] = {
-        x: b.position.x,
-        y: b.position.y,
-        color: b.color,
-        radius: b.radius,
-        isBase: b.isBase || false,
-      };
+        // Collect roadBase
+        for (const key in chunk.roadBase) {
+          if (key === "index" || key === "0") continue;
+          const b = chunk.roadBase[key];
+          // Use key as ID. IDs are unique globally.
+          roadBaseData[key] = {
+            x: b.position.x,
+            y: b.position.y,
+            color: b.color,
+            radius: b.radius,
+            isBase: b.isBase || false,
+          };
+        }
+
+        // Collect segments
+        for (const key in chunk.segments) {
+          if (key === "index") continue;
+          const s = chunk.segments[key];
+          segmentsData.push({
+            id: key,
+            startNode: s.start, // Note: segment.js uses 'start'/'end' which are IDs
+            endNode: s.end,
+            color: s.color,
+            width: s.width,
+          });
+        }
+
+        // Collect areaZone
+        chunk.areaZone.forEach((z) => {
+          areaZoneData.push({
+            position: { x: z.position.x, y: z.position.y },
+            width: z.width,
+            height: z.height,
+            angle: z.angle,
+            color: z.color,
+          });
+        });
+      }
     }
 
     const data = {
-      segments: this.segments.map((s) => ({
-        startNode: s.startNode,
-        endNode: s.endNode,
-        color: s.color,
-        width: s.width,
-        nextSegments: s.nextSegments,
-        previousSegments: s.previousSegments,
-      })),
-
-      areaZone: this.areaZone.map((z) => ({
-        position: { x: z.position.x, y: z.position.y },
-        width: z.width,
-        height: z.height,
-        angle: z.angle,
-        color: z.color,
-      })),
-
+      segments: segmentsData,
+      areaZone: areaZoneData,
       roadBase: roadBaseData,
       roadBaseIndex: this.roadBase.index,
+      segmentsIndex: this.segments.index
     };
 
     localStorage.setItem("ROAD_DATA", JSON.stringify(data));
@@ -471,38 +644,71 @@ class Road {
 
     const data = JSON.parse(raw);
 
-    // clear existing
-    this.segments = [];
-    this.areaZone = [];
-    this.roadBase = { index: data.roadBaseIndex || 0 };
+    // 1. Clear ALL Chunks contents (ROM)
+    const chunks = window.contry.chunks;
+    for (let y = 0; y < chunks.length; y++) {
+      for (let x = 0; x < chunks[y].length; x++) {
+        chunks[y][x].roadBase = {};
+        chunks[y][x].segments = {};
+        chunks[y][x].areaZone = [];
+      }
+    }
 
-    /* ===== restore nodes ===== */
+    // 2. Clear RAM (Indices will be restored from data)
+    this.roadBase = { index: data.roadBaseIndex || 1, 0: new Circle(0, 0, "skyblue", 50, true) };
+    this.segments = { index: data.segmentsIndex || 0 };
+    this.areaZone = [];
+
+
+    /* ===== restore nodes to ROM ===== */
     for (const key in data.roadBase) {
       const b = data.roadBase[key];
-      this.roadBase[key] = new Circle(b.x, b.y, b.color, b.radius, b.isBase);
+      const chunkIdx = window.contry.getChunkIndex(b.x, b.y);
+      if (chunkIdx) {
+        // We need to pass chunk to constructor so it has .chunk property
+        const node = new Circle(b.x, b.y, b.color, b.radius, b.isBase, chunkIdx);
+        window.contry.chunks[chunkIdx.x][chunkIdx.y].roadBase[key] = node;
+      }
     }
 
-    /* ===== restore segments ===== */
+    /* ===== restore segments to ROM ===== */
+    const nodePositions = {};
+    for (const key in data.roadBase) {
+      nodePositions[key] = data.roadBase[key];
+    }
+
     for (const s of data.segments) {
-      const seg = new Segment(s.startNode, s.color, s.width);
-      seg.endNode = s.endNode;
-      seg.nextSegments = s.nextSegments || [];
-      seg.previousSegments = s.previousSegments || [];
-      this.segments.push(seg);
+      const startNodeData = nodePositions[s.startNode];
+      if (!startNodeData) continue;
+
+      const chunkIdx = window.contry.getChunkIndex(startNodeData.x, startNodeData.y);
+      if (chunkIdx) {
+        const seg = new Segment(s.startNode, s.color, s.width, s.endNode, chunkIdx);
+        window.contry.chunks[chunkIdx.x][chunkIdx.y].segments[s.id] = seg;
+      }
     }
 
-    /* ===== restore zones ===== */
+    /* ===== restore zones to ROM ===== */
     for (const z of data.areaZone) {
-      const zone = new AreaZone(
-        z.position.x,
-        z.position.y,
-        z.width,
-        z.height,
-        z.angle,
-        z.color
-      );
-      this.areaZone.push(zone);
+      const chunkIdx = window.contry.getChunkIndex(z.position.x, z.position.y);
+      if (chunkIdx) {
+        const zone = new AreaZone(
+          z.position.x,
+          z.position.y,
+          z.width,
+          z.height,
+          z.angle,
+          null, // segmentIndex not critical for rendering, maybe critical for deletion?
+          null, // point
+          chunkIdx
+        );
+        zone.color = z.color;
+        window.contry.chunks[chunkIdx.x][chunkIdx.y].areaZone.push(zone);
+      }
     }
+
+    // 3. Load ROM to RAM (Active Chunks)
+    this.loadFromChunks();
   }
 
   deleteSegmentAt({ x, y }) {
