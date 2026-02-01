@@ -87,7 +87,6 @@
 
     let FPS = 0;
     setInterval(() => {
-      //console.log(FPS,camera.mouse.zoom)
       FPS = 0;
     }, 1000);
 
@@ -99,8 +98,9 @@
       camera.restore(ctx);
       camera.setZoom();
       contry.draw(ctx);
-      window.building.draw(ctx, camera.mouse.move);
       window.road.draw(ctx, camera.mouse.move, zone);
+      window.building.draw(ctx, camera.mouse.move);
+
 
       AreaZone.drawZone(zone);
 

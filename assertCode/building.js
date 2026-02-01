@@ -163,6 +163,9 @@ class Building {
         const start = window.road.roadBase[seg.start];
         const end = window.road.roadBase[seg.end];
 
+        // Check if start and end points exist
+        if (!start || !end) continue;
+
         if (
           this.lineRotatedRectCollision(
             start.x,
@@ -198,7 +201,7 @@ class Building {
       if (!bigCollision) {
         area.sold = true;
 
-        const chunkIdx = window.contry.getChunkIndex(this.position.x, this.position.y);
+        const chunkIdx = window.contry.getChunkIndex(position.x, position.y);
         const newBuild = new Build(
           position.x,
           position.y,
@@ -283,7 +286,22 @@ class Building {
   }
 
   draw(ctx, { x, y }) {
-    this.build.forEach((build) => build.draw(ctx));
+    // Calculate camera center viewpoint in world coordinates
+    const viewPoint = window.camera.getMousePosition({
+      clientX: ctx.canvas.width / 2,
+      clientY: ctx.canvas.height / 2
+    });
+
+    // Sort buildings by distance from viewpoint (far to near)
+    // This ensures proper depth ordering for 3D rendering
+    const sortedBuildings = [...this.build].sort((a, b) => {
+      const distA = Math.hypot(a.position.x - viewPoint.x, a.position.y - viewPoint.y);
+      const distB = Math.hypot(b.position.x - viewPoint.x, b.position.y - viewPoint.y);
+      return distB - distA; // Far buildings first, near buildings last
+    });
+
+    // Draw all buildings with 3D perspective
+    sortedBuildings.forEach((build) => build.draw(ctx, viewPoint));
 
     if (Tab == "Building") {
       this.position.x = x;
@@ -366,6 +384,9 @@ class Building {
         let seg = window.road.segments[id];
         let start = window.road.roadBase[seg.start];
         let end = window.road.roadBase[seg.end];
+
+        // Check if start and end exist
+        if (!start || !end) continue;
 
         if (
           this.lineRotatedRectCollision(

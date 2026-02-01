@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Fake 3D Building</title>
+    <style>
+        body {
+            margin: 0;
+            background: #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            background: #f5f5f5;
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas" width="900" height="550"></canvas>
+
+    <script>
+        /* ================== CANVAS ================== */
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        /* ================== MOUSE VIEWPOINT ================== */
+        const viewPoint = { x: canvas.width / 2, y: canvas.height / 2 };
+
+        canvas.addEventListener("mousemove", e => {
+            const r = canvas.getBoundingClientRect();
+            viewPoint.x = e.clientX - r.left;
+            viewPoint.y = e.clientY - r.top;
+        });
+
+        /* ================== HELPERS ================== */
+        function average(p1, p2) {
+            return {
+                x: (p1.x + p2.x) / 2,
+                y: (p1.y + p2.y) / 2
+            };
+        }
+
+        function getFake3dPoint(point, viewPoint, height) {
+            const dx = point.x - viewPoint.x;
+            const dy = point.y - viewPoint.y;
+            const dist = Math.hypot(dx, dy) + 0.0001;
+            const scale = height / dist;
+
+            return {
+                x: point.x + dx * scale,
+                y: point.y + dy * scale
+            };
+        }
+
+        /* ================== POLYGON ================== */
+        class Polygon {
+            constructor(points) {
+                this.points = points;
+            }
+
+            draw(ctx, style = {}) {
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                for (let i = 1; i < this.points.length; i++) {
+                    ctx.lineTo(this.points[i].x, this.points[i].y);
+                }
+                ctx.closePath();
+
+                if (style.fill) {
+                    ctx.fillStyle = style.fill;
+                    ctx.fill();
+                }
+
+                if (style.stroke) {
+                    ctx.strokeStyle = style.stroke;
+                    ctx.lineWidth = style.lineWidth || 1;
+                    ctx.lineJoin = style.join || "miter";
+                    ctx.stroke();
+                }
+            }
+
+            distanceToPoint(p) {
+                let cx = 0, cy = 0;
+                for (const pt of this.points) {
+                    cx += pt.x;
+                    cy += pt.y;
+                }
+                cx /= this.points.length;
+                cy /= this.points.length;
+                return Math.hypot(cx - p.x, cy - p.y);
+            }
+        }
+
+        /* ================== BUILDING ================== */
+        class Building {
+            constructor(poly, height = 220) {
+                this.base = poly;
+                this.height = height;
+            }
+
+            draw(ctx, viewPoint) {
+                // Ceiling
+                const topPoints = this.base.points.map(p =>
+                    getFake3dPoint(p, viewPoint, this.height * 0.6)
+                );
+                const ceiling = new Polygon(topPoints);
+
+                // Walls
+                const sides = [];
+                for (let i = 0; i < this.base.points.length; i++) {
+                    const n = (i + 1) % this.base.points.length;
+                    sides.push(
+                        new Polygon([
+                            this.base.points[i],
+                            this.base.points[n],
+                            topPoints[n],
+                            topPoints[i]
+                        ])
+                    );
+                }
+
+                sides.sort((a, b) =>
+                    b.distanceToPoint(viewPoint) - a.distanceToPoint(viewPoint)
+                );
+
+                // Roof
+                const baseMid = [
+                    average(this.base.points[0], this.base.points[1]),
+                    average(this.base.points[2], this.base.points[3])
+                ];
+
+                const topMid = baseMid.map(p =>
+                    getFake3dPoint(p, viewPoint, this.height)
+                );
+
+                const roofPolys = [
+                    new Polygon([ceiling.points[0], ceiling.points[3], topMid[1], topMid[0]]),
+                    new Polygon([ceiling.points[2], ceiling.points[1], topMid[0], topMid[1]])
+                ];
+
+                roofPolys.sort((a, b) =>
+                    b.distanceToPoint(viewPoint) - a.distanceToPoint(viewPoint)
+                );
+
+                /* ===== DRAW ORDER ===== */
+                this.base.draw(ctx, {
+                    fill: "#eaeaea",
+                    stroke: "rgba(0,0,0,0.2)",
+                    lineWidth: 14
+                });
+
+                sides.forEach(s =>
+                    s.draw(ctx, { fill: "#ffffff", stroke: "#aaa" })
+                );
+
+                ceiling.draw(ctx, {
+                    fill: "#ffffff",
+                    stroke: "#ffffff",
+                    lineWidth: 5
+                });
+
+                roofPolys.forEach(r =>
+                    r.draw(ctx, {
+                        fill: "#d44",
+                        stroke: "#c33",
+                        lineWidth: 7,
+                        join: "round"
+                    })
+                );
+            }
+        }
+
+        /* ================== DEMO ================== */
+        const base = new Polygon([
+            { x: 350, y: 340 },
+            { x: 550, y: 340 },
+            { x: 550, y: 460 },
+            { x: 350, y: 460 }
+        ]);
+
+        const building = new Building(base, 260);
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            building.draw(ctx, viewPoint);
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+
+</body>
+
+</html>

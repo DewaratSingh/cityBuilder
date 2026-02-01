@@ -56,3 +56,73 @@ function rectRectCollision(A, B) {
   return true;
 }
 
+// ==========================
+// 3D PERSPECTIVE UTILITIES
+// ==========================
+
+// Calculate midpoint between two points
+function average(p1, p2) {
+  return {
+    x: (p1.x + p2.x) / 2,
+    y: (p1.y + p2.y) / 2
+  };
+}
+
+// Get fake 3D point offset from viewpoint
+function getFake3dPoint(point, viewPoint, height) {
+  const dx = point.x - viewPoint.x;
+  const dy = point.y - viewPoint.y;
+  const dist = Math.hypot(dx, dy) + 0.0001; // Avoid division by zero
+
+  // Clamp minimum distance to prevent extreme distortion near center
+  const minDist = 200; // Minimum distance threshold
+  const effectiveDist = Math.max(dist, minDist);
+
+  const scale = height / effectiveDist;
+
+  return {
+    x: point.x + dx * scale,
+    y: point.y + dy * scale
+  };
+}
+
+// Polygon class for rendering building faces
+class Polygon {
+  constructor(points) {
+    this.points = points;
+  }
+
+  draw(ctx, style = {}) {
+    ctx.beginPath();
+    ctx.moveTo(this.points[0].x, this.points[0].y);
+    for (let i = 1; i < this.points.length; i++) {
+      ctx.lineTo(this.points[i].x, this.points[i].y);
+    }
+    ctx.closePath();
+
+    if (style.fill) {
+      ctx.fillStyle = style.fill;
+      ctx.fill();
+    }
+
+    if (style.stroke) {
+      ctx.strokeStyle = style.stroke;
+      ctx.lineWidth = style.lineWidth || 1;
+      ctx.lineJoin = style.join || "miter";
+      ctx.stroke();
+    }
+  }
+
+  distanceToPoint(p) {
+    let cx = 0, cy = 0;
+    for (const pt of this.points) {
+      cx += pt.x;
+      cy += pt.y;
+    }
+    cx /= this.points.length;
+    cy /= this.points.length;
+    return Math.hypot(cx - p.x, cy - p.y);
+  }
+}
+
+

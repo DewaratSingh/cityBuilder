@@ -288,13 +288,18 @@ class Road {
 
       if (!seg.start || !seg.end) continue;
 
+      // Check if the road nodes actually exist in roadBase
+      const startNode = this.roadBase[seg.start];
+      const endNode = this.roadBase[seg.end];
+      if (!startNode || !endNode) continue;
+
       const C = createVector(
-        this.roadBase[seg.start].x,
-        this.roadBase[seg.start].y
+        startNode.x,
+        startNode.y
       );
       const D = createVector(
-        this.roadBase[seg.end].x,
-        this.roadBase[seg.end].y
+        endNode.x,
+        endNode.y
       );
 
       const hitPoint = lineIntersection(A, B, C, D);
