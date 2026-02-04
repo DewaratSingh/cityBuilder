@@ -56,10 +56,6 @@ function rectRectCollision(A, B) {
   return true;
 }
 
-// ==========================
-// 3D PERSPECTIVE UTILITIES
-// ==========================
-
 // Calculate midpoint between two points
 function average(p1, p2) {
   return {

@@ -40,6 +40,7 @@
   <script src="./road/segment.js"></script>
   <script src="./road/zone.js"></script>
   <script src="./road/road.js"></script>
+  <script src="./assertCode/house.js"></script>
   <script src="./assertCode/build.js"></script>
   <script src="./assertCode/building.js"></script>
 
@@ -49,6 +50,12 @@
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    // Handle window resize and orientation changes
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
 
     window.road = new Road();
 
@@ -223,6 +230,216 @@
     });
     document.addEventListener("mousewheel", (e) => {
       camera.zoom(e);
+    });
+
+    // Mobile touch controls
+    let touches = {
+      one: null,
+      two: null,
+      initialDistance: 0,
+      initialZoom: 1,
+      initialOffset: { x: 0, y: 0 },
+      initialMidpoint: { x: 0, y: 0 },
+      twoFingerGesture: false
+    };
+
+    function getTouchPos(touch) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      };
+    }
+
+    function getDistance(touch1, touch2) {
+      const dx = touch2.x - touch1.x;
+      const dy = touch2.y - touch1.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function getMidpoint(touch1, touch2) {
+      return {
+        x: (touch1.x + touch2.x) / 2,
+        y: (touch1.y + touch2.y) / 2
+      };
+    }
+
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1) {
+        // Single touch - treat like mouse down for current tab
+        touches.one = getTouchPos(e.touches[0]);
+        camera.mouse.down = camera.getMousePosition({
+          clientX: e.touches[0].clientX,
+          clientY: e.touches[0].clientY
+        });
+
+        switch (Tab) {
+          case "Move":
+            camera.mouse.drag = true;
+            camera.mouse.down.is = true;
+            break;
+          case "Road":
+            window.road.createStartSegment(camera.mouse.down);
+            camera.mouse.down.is = true;
+            break;
+          case "Zone":
+            zone.start = camera.mouse.down;
+            zone.move = camera.mouse.down;
+            zone.down = true;
+            break;
+          case "Building":
+          case "Trees":
+            window.building.placeBuilding();
+            break;
+        }
+      } else if (e.touches.length === 2) {
+        // Two fingers - pan and zoom mode
+        touches.twoFingerGesture = true;
+        touches.one = getTouchPos(e.touches[0]);
+        touches.two = getTouchPos(e.touches[1]);
+        touches.initialDistance = getDistance(touches.one, touches.two);
+        touches.initialZoom = camera.mouse.zoom;
+        touches.initialOffset = { ...camera.Offset };
+        touches.initialMidpoint = getMidpoint(touches.one, touches.two);
+
+        // Cancel any ongoing road creation
+        if (Tab === "Road" && camera.mouse.down.is) {
+          camera.mouse.down.is = false;
+        }
+      }
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1 && touches.one) {
+        // Single touch move
+        const currentTouch = getTouchPos(e.touches[0]);
+        camera.mouse.move = camera.getMousePosition({
+          clientX: e.touches[0].clientX,
+          clientY: e.touches[0].clientY
+        });
+
+        switch (Tab) {
+          case "Move":
+            if (camera.mouse.drag) {
+              camera.mouse.offset = {
+                x: camera.mouse.move.x - camera.mouse.down.x,
+                y: camera.mouse.move.y - camera.mouse.down.y,
+              };
+              camera.Offset = {
+                x: camera.Offset.x + camera.mouse.offset.x,
+                y: camera.Offset.y + camera.mouse.offset.y,
+              };
+            }
+            break;
+          case "Road":
+            if (camera.mouse.down.is) {
+              window.road.createEndSegmentMove(camera.mouse.move);
+            }
+            break;
+          case "Zone":
+            if (zone.down) {
+              zone.move = camera.mouse.move;
+            }
+            break;
+        }
+      } else if (e.touches.length === 2) {
+        // Two finger move - pan and zoom
+        const touch1 = getTouchPos(e.touches[0]);
+        const touch2 = getTouchPos(e.touches[1]);
+        const currentDistance = getDistance(touch1, touch2);
+        const currentMidpoint = getMidpoint(touch1, touch2);
+
+        // Calculate zoom based on pinch distance
+        if (touches.initialDistance > 0) {
+          const zoomFactor = touches.initialDistance / currentDistance;
+          const newZoom = touches.initialZoom * zoomFactor;
+
+          // Clamp zoom between reasonable values (0.1 to 10)
+          camera.mouse.zoom = Math.max(0.1, Math.min(10, newZoom));
+        }
+
+        // Calculate pan based on midpoint movement
+        const panDeltaX = currentMidpoint.x - touches.initialMidpoint.x;
+        const panDeltaY = currentMidpoint.y - touches.initialMidpoint.y;
+
+        camera.Offset = {
+          x: touches.initialOffset.x + panDeltaX,
+          y: touches.initialOffset.y + panDeltaY
+        };
+      }
+    });
+
+    canvas.addEventListener("touchend", (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 0) {
+        // All touches ended
+        switch (Tab) {
+          case "Move":
+            camera.mouse.down.is = false;
+            if (camera.mouse.drag) {
+              let zoom = camera.mouse.zoom;
+              camera.mouse = {
+                down: { x: 0, y: 0, is: false },
+                move: { x: 0, y: 0 },
+                up: { x: 0, y: 0 },
+                zoom: zoom,
+                drag: false,
+                offset: { x: 0, y: 0 },
+              };
+            }
+            break;
+          case "Road":
+            if (camera.mouse.down.is && !touches.twoFingerGesture) {
+              window.road.createEndSegment(camera.mouse.move);
+              camera.mouse.down.is = false;
+            } else if (touches.twoFingerGesture) {
+              // Two finger gesture was used, cancel road creation
+              camera.mouse.down.is = false;
+            }
+            break;
+          case "Zone":
+            zone = { start: { x: 0, y: 0 }, move: { x: 0, y: 0 }, down: false };
+            break;
+        }
+
+        // Reset touch tracking
+        touches = {
+          one: null,
+          two: null,
+          initialDistance: 0,
+          initialZoom: 1,
+          initialOffset: { x: 0, y: 0 },
+          initialMidpoint: { x: 0, y: 0 },
+          twoFingerGesture: false
+        };
+      } else if (e.touches.length === 1) {
+        // One finger remains, reset to single touch mode
+        touches.one = getTouchPos(e.touches[0]);
+        touches.two = null;
+        touches.initialDistance = 0;
+      }
+    });
+
+    canvas.addEventListener("touchcancel", (e) => {
+      e.preventDefault();
+      // Reset everything on touch cancel
+      touches = {
+        one: null,
+        two: null,
+        initialDistance: 0,
+        initialZoom: 1,
+        initialOffset: { x: 0, y: 0 },
+        initialMidpoint: { x: 0, y: 0 },
+        twoFingerGesture: false
+      };
+      camera.mouse.drag = false;
+      camera.mouse.down.is = false;
+      zone.down = false;
     });
 
     window.addEventListener("keydown", (e) => {

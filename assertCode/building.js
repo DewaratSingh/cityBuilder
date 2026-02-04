@@ -438,7 +438,18 @@ class Building {
             h: b.height,
             angle: b.angle,
             color: b.color,
-            zone: b.segmentIndexAndPoint
+            zone: b.segmentIndexAndPoint,
+            // Save house properties for consistent reload
+            house: {
+              width: b.house.width,
+              height: b.house.height,
+              offsetX: b.house.offsetX,
+              offsetY: b.house.offsetY,
+              roofStyle: b.house.roofStyle,
+              wallColor: b.house.wallColor,
+              roofColor: b.house.roofColor,
+              buildingHeight: b.house.buildingHeight
+            }
           });
         });
       }
@@ -465,6 +476,19 @@ class Building {
       const chunkIdx = window.contry.getChunkIndex(b.x, b.y);
       if (chunkIdx) {
         const build = new Build(b.x, b.y, b.w, b.h, b.angle, b.color, b.zone, chunkIdx);
+
+        // Restore house properties if saved
+        if (b.house) {
+          build.house.width = b.house.width;
+          build.house.height = b.house.height;
+          build.house.offsetX = b.house.offsetX;
+          build.house.offsetY = b.house.offsetY;
+          build.house.roofStyle = b.house.roofStyle;
+          build.house.wallColor = b.house.wallColor;
+          build.house.roofColor = b.house.roofColor;
+          build.house.buildingHeight = b.house.buildingHeight;
+        }
+
         window.contry.chunks[chunkIdx.x][chunkIdx.y].build.push(build);
       }
     });

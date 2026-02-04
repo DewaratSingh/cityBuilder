@@ -63,7 +63,7 @@ class Road {
   }
 
   loadFromChunks() {
-    // 1. Clear RAM (preserve indices)
+    // 1. Clear RAM (preserve indices as starting point)
     const currentRoadBaseIndex = this.roadBase.index;
     this.roadBase = {
       index: currentRoadBaseIndex,
@@ -88,6 +88,27 @@ class Road {
       // Merge areaZone
       this.areaZone.push(...chunk.areaZone);
     });
+
+    // 3. Update indices based on loaded data to prevent ID collisions
+    let maxRoadBaseId = currentRoadBaseIndex;
+    for (const key in this.roadBase) {
+      if (key === "index") continue;
+      const id = Number(key);
+      if (!isNaN(id) && id > maxRoadBaseId) {
+        maxRoadBaseId = id;
+      }
+    }
+    this.roadBase.index = maxRoadBaseId;
+
+    let maxSegmentId = currentSegmentsIndex;
+    for (const key in this.segments) {
+      if (key === "index") continue;
+      const id = Number(key);
+      if (!isNaN(id) && id > maxSegmentId) {
+        maxSegmentId = id;
+      }
+    }
+    this.segments.index = maxSegmentId;
   }
 
   addNode(x, y, color = "grey", w = 50) {
@@ -457,6 +478,8 @@ class Road {
         const seg = this.segments[j];
         const A = seg.startingPosition;
         const B = seg.endingPosition;
+
+        if (!A || !B) continue;
 
         if (distance(circle.position.x, circle.position.y, A.x, A.y) > 300)
           continue;
