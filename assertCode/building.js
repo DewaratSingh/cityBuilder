@@ -337,6 +337,9 @@ class Building {
             let start = window.road.roadBase[seg.start];
             let end = window.road.roadBase[seg.end];
 
+            // Check if start and end exist
+            if (!start || !end) continue;
+
             if (
               this.lineRotatedRectCollision(
                 start.x,
