@@ -1,0 +1,37 @@
+<html>
+
+<head>
+    <title>City Builder</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="mode-toggle" class="mode-toggle-container">
+        <button id="btn-mode" class="btn btn-blue">
+            Mode: BUILD
+        </button>
+        <button id="btn-path-mode" class="btn btn-orange">
+            Path: STRAIGHT
+        <button id="btn-show-segments" class="btn btn-purple">
+            Show Segments: OFF
+        </button>
+    </div>
+
+    <div id="selector">
+        <div id="main-option"></div>
+        <div id="option"></div>
+        <div id="obj" class="your-div"></div>
+    </div>
+
+    <script src="./utility/camera.js"></script>
+    <script src="./structure/circle.js"></script>
+    <script src="./structure/segment.js"></script>
+    <script src="./builds/road.js"></script>
+    <script src="./structure/car.js"></script>
+    <script src="./utility/world.js"></script>
+    <script src="./utility/trip.js"></script>
+    <script src="./index.js"></script>
+</body>
+
+</html>
