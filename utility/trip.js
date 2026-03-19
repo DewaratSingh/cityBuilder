@@ -11,17 +11,23 @@ class Trip {
     constructor(world) {
         this.world = world;
 
-        // setInterval(() => {
-        //     const startId = Math.floor(Math.random() * this.world.segmentIdCount);
-        //     const endId = Math.floor(Math.random() * this.world.segmentIdCount);
+        setInterval(() => {
+            const validSegments = Object.keys(this.world.segments).filter(
+                key => !this.world.segments[key].isInternal
+            );
 
-        //     const path = this.getShortestPath(startId, endId);
+            if (validSegments.length === 0) return;
 
-        //     if (path && path.length > 0) {
-        //         const newCar = new Car(world, path, randomColor());
-        //         world.cars.push(newCar);
-        //     }
-        // }, 100);
+            const startId = validSegments[Math.floor(Math.random() * validSegments.length)];
+            const endId = validSegments[Math.floor(Math.random() * validSegments.length)];
+
+            const path = this.getShortestPath(startId, endId);
+
+            if (path && path.length > 0) {
+                const newCar = new Car(this.world, path, randomColor());
+                this.world.cars.push(newCar);
+            }
+        }, 1000);
     }
 
     getDistance(circleA, circleB) {

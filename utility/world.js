@@ -26,7 +26,6 @@ class World {
         this.#addEventListeners();
     }
 
-
     getHoveredCircle(x, y) {
         for (const key in this.circle) {
             let circ = this.circle[key];
@@ -181,6 +180,14 @@ class World {
                 this.draftStartCircle = null;
             }
         });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (this.hoveredSegmentId !== null) {
+                    this.removeSegment(this.hoveredSegmentId);
+                }
+            }
+        });
     }
 
     addCircle(x, y) {
@@ -261,15 +268,6 @@ class World {
     }
 
     getOrCreateLaneNode(x, y) {
-        // Try to snap to an existing lane node within 2 pixels
-        for (const key in this.laneNodes) {
-            let node = this.laneNodes[key];
-            let dx = node.x - x;
-            let dy = node.y - y;
-            if (Math.sqrt(dx * dx + dy * dy) < 2) {
-                return node;
-            }
-        }
         return this.addLaneNode(x, y);
     }
 
@@ -291,6 +289,39 @@ class World {
             return { x: p1.x + t * s1x, y: p1.y + t * s1y };
         }
         return null;
+    }
+
+    removeSegment(segId) {
+        let seg = this.segments[segId];
+        if (!seg) return;
+
+        // Detach from graph nodes (circles/laneNodes) so pathfinding ignores it
+        if (seg.start && seg.start.SegmentId) {
+            seg.start.SegmentId = seg.start.SegmentId.filter(s => s != segId);
+        }
+        if (seg.end && seg.end.SegmentId) {
+            seg.end.SegmentId = seg.end.SegmentId.filter(s => s != segId);
+        }
+
+        // Remove from any parent Road that might contain it
+        for (const key in this.roads) {
+            let r = this.roads[key];
+            if (r.segmentIds && r.segmentIds.includes(Number(segId))) {
+                r.segmentIds = r.segmentIds.filter(s => s != segId);
+            }
+        }
+
+        // Remove from intersection inner segments 
+        for (const key in this.intersections) {
+            let inter = this.intersections[key];
+            if (inter.segmentIds && inter.segmentIds.includes(Number(segId))) {
+                inter.segmentIds = inter.segmentIds.filter(s => s != segId);
+            }
+        }
+
+        // Delete from global segments list
+        delete this.segments[segId];
+        this.hoveredSegmentId = null; // Reset hover so it doesn't break
     }
 
     removeRoad(id) {
@@ -606,6 +637,51 @@ class World {
 
         let maxWidth = Math.max(...connectedRoads.map(r => r.width || 30));
         let offsetDist = maxWidth / 2;
+
+        if (connectedRoads.length > 1) {
+            let roadData = connectedRoads.map(road => {
+                let isStart = road.start.id === circle.id;
+                let pts = road.curvePoints || [{ x: road.start.x, y: road.start.y }, { x: road.end.x, y: road.end.y }];
+                let pAdj = isStart ? pts[1] : pts[pts.length - 2];
+                if (!pAdj) pAdj = isStart ? pts[0] : pts[pts.length - 1];
+
+                let dx = pAdj.x - circle.x;
+                let dy = pAdj.y - circle.y;
+                let len = Math.hypot(dx, dy) || 1;
+                /* Note: Math.atan2 takes y, x */
+                let angle = Math.atan2(dy, dx);
+                if (angle < 0) angle += 2 * Math.PI;
+
+                return { angle, width: road.width || 30 };
+            });
+
+            roadData.sort((a, b) => a.angle - b.angle);
+
+            for (let i = 0; i < roadData.length; i++) {
+                let r1 = roadData[i];
+                let r2 = roadData[(i + 1) % roadData.length];
+
+                let dAngle = r2.angle - r1.angle;
+                if (dAngle <= 0) dAngle += 2 * Math.PI;
+
+                // Only apply pullback if roads merge into a sharp "V" (< 180 deg)
+                if (dAngle > 0.05 && dAngle < Math.PI - 0.05) {
+                    let sinTheta = Math.sin(dAngle);
+                    let cosTheta = Math.cos(dAngle);
+                    let w1 = r1.width;
+                    let w2 = r2.width;
+
+                    let t = (w2 / 2 + (w1 / 2) * cosTheta) / sinTheta;
+                    let s = (w1 / 2 + (w2 / 2) * cosTheta) / sinTheta;
+
+                    offsetDist = Math.max(offsetDist, t, s);
+                }
+            }
+        }
+
+        // Cap the offset to prevent ridiculously huge intersections that eat the whole road
+        offsetDist = Math.min(offsetDist, 150);
+
         let corners = [];
 
         for (let road of connectedRoads) {
@@ -676,8 +752,8 @@ class World {
             let angleLeft = Math.atan2(cLeft.y - pCenter.y, cLeft.x - pCenter.x);
             let angleRight = Math.atan2(cRight.y - pCenter.y, cRight.x - pCenter.x);
 
-            corners.push({ pt: cLeft, angle: angleLeft });
-            corners.push({ pt: cRight, angle: angleRight });
+            corners.push({ pt: cLeft, angle: angleLeft, road: road, dir: { x: dirX, y: dirY } });
+            corners.push({ pt: cRight, angle: angleRight, road: road, dir: { x: dirX, y: dirY } });
         }
 
         // Sort corners clockwise around the center for the polygon
@@ -685,7 +761,7 @@ class World {
 
         this.intersections[circle.id] = {
             center: { x: circle.x, y: circle.y },
-            polygon: corners.map(c => c.pt),
+            corners: corners,
             connectedRoads: connectedRoads,
             segmentIds: this.intersections[circle.id]?.segmentIds || []
         };
@@ -786,6 +862,7 @@ class World {
                 let seg = new Segment(inData.node, invisColor, 1, outData.node);
                 seg.curvePoints = curvePoints;
                 seg.length = this.calculatePathLength(curvePoints);
+                seg.isInternal = true;
 
                 let idSeg = this.addSegment(seg);
                 inData.node.SegmentId.push(idSeg);
@@ -799,13 +876,51 @@ class World {
         // Draw Intersections Base Polygons FIRST
         for (const id in this.intersections) {
             let inter = this.intersections[id];
-            if (!inter || !inter.polygon || inter.polygon.length < 3) continue;
+            let corners = inter.corners;
+            if (!inter || !corners || corners.length < 3) continue;
 
+            // 1. Draw Normal Straight Polygon
             ctx.beginPath();
             ctx.fillStyle = "#444"; // Asphalt color
-            ctx.moveTo(inter.polygon[0].x, inter.polygon[0].y);
-            for (let i = 1; i < inter.polygon.length; i++) {
-                ctx.lineTo(inter.polygon[i].x, inter.polygon[i].y);
+            ctx.moveTo(corners[0].pt.x, corners[0].pt.y);
+            for (let i = 1; i < corners.length; i++) {
+                ctx.lineTo(corners[i].pt.x, corners[i].pt.y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // 2. Draw Curved Polygon Overlapping
+            ctx.beginPath();
+            ctx.fillStyle = "#444"; // Asphalt color
+            ctx.moveTo(corners[0].pt.x, corners[0].pt.y);
+
+            for (let i = 1; i <= corners.length; i++) {
+                let current = corners[i % corners.length];
+                let prev = corners[i - 1];
+
+                if (current.road === prev.road) {
+                    ctx.lineTo(current.pt.x, current.pt.y);
+                } else {
+                    let dx1 = prev.dir.x, dy1 = prev.dir.y;
+                    let dx2 = current.dir.x, dy2 = current.dir.y;
+
+                    let denom = dx1 * dy2 - dy1 * dx2;
+                    let P = null;
+                    if (Math.abs(denom) > 0.001) {
+                        let u = ((current.pt.x - prev.pt.x) * dy2 - (current.pt.y - prev.pt.y) * dx2) / denom;
+                        let v = ((current.pt.x - prev.pt.x) * dy1 - (current.pt.y - prev.pt.y) * dx1) / denom;
+
+                        if (u < 0 && v < 0 && u > -200 && v > -200) {
+                            P = { x: prev.pt.x + u * dx1, y: prev.pt.y + u * dy1 };
+                        }
+                    }
+
+                    if (P) {
+                        ctx.quadraticCurveTo(P.x, P.y, current.pt.x, current.pt.y);
+                    } else {
+                        ctx.lineTo(current.pt.x, current.pt.y);
+                    }
+                }
             }
             ctx.closePath();
             ctx.fill();
