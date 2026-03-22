@@ -92,6 +92,154 @@ class World {
         return closestSegId;
     }
 
+    getHoveredRoadPoint(x, y) {
+        let hitDist = Infinity;
+        let bestMatch = null;
+
+        for (const key in this.roads) {
+            let road = this.roads[key];
+            let pts = road.curvePoints || [road.start, road.end];
+            let rWidth = road.width || 30;
+            let threshold = (rWidth / 2) + 10;
+
+            for (let i = 0; i < pts.length - 1; i++) {
+                let p1 = pts[i];
+                let p2 = pts[i + 1];
+
+                let l2 = Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2);
+                let t = Math.max(0, Math.min(1, ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / (l2 || 1)));
+                let projection = {
+                    x: p1.x + t * (p2.x - p1.x),
+                    y: p1.y + t * (p2.y - p1.y)
+                };
+                let dist = Math.hypot(x - projection.x, y - projection.y);
+
+                if (dist < threshold && dist < hitDist) {
+                    hitDist = dist;
+                    bestMatch = {
+                        roadId: key,
+                        point: projection,
+                        segmentIndex: i
+                    };
+                }
+            }
+        }
+        return bestMatch;
+    }
+
+    splitRoadAtPoint(roadId, newCircle, splitSegmentIndex, exactPoint) {
+        let intersectedRoad = this.roads[roadId];
+        if (!intersectedRoad) return;
+
+        let erStart = intersectedRoad.start;
+        let erEnd = intersectedRoad.end;
+        let erType = intersectedRoad.type;
+        let erCurvePoints = intersectedRoad.curvePoints;
+
+        this.removeRoad(roadId);
+
+        let erCurve1 = null;
+        let erCurve2 = null;
+        if (erCurvePoints) {
+            erCurve1 = erCurvePoints.slice(0, splitSegmentIndex + 1);
+            erCurve1.push(exactPoint);
+
+            erCurve2 = [exactPoint];
+            erCurve2.push(...erCurvePoints.slice(splitSegmentIndex + 1));
+        }
+
+        this.addRoadWithIntersections(erStart, newCircle, erType, erCurve1);
+        this.addRoadWithIntersections(newCircle, erEnd, erType, erCurve2);
+    }
+
+    getHoveredLanePoint(x, y) {
+        if (this.hoveredSegmentId === null) return null;
+        let seg = this.segments[this.hoveredSegmentId];
+        if (!seg) return null;
+
+        let hitDist = Infinity;
+        let bestMatch = null;
+        let pts = seg.curvePoints || [seg.start, seg.end];
+
+        for (let i = 0; i < pts.length - 1; i++) {
+            let p1 = pts[i];
+            let p2 = pts[i + 1];
+
+            let l2 = Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2);
+            let t = Math.max(0, Math.min(1, ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / (l2 || 1)));
+            let projection = {
+                x: p1.x + t * (p2.x - p1.x),
+                y: p1.y + t * (p2.y - p1.y)
+            };
+            let dist = Math.hypot(x - projection.x, y - projection.y);
+
+            if (dist < hitDist) {
+                hitDist = dist;
+                bestMatch = { point: projection, segmentIndex: i, segmentId: this.hoveredSegmentId };
+            }
+        }
+        return bestMatch;
+    }
+
+    splitSegmentAtPoint(segId, exactPoint, splitIndex) {
+        let seg = this.segments[segId];
+        if (!seg) return null;
+
+        let originalCurve = seg.baseCurvePoints || seg.curvePoints || [seg.start, seg.end];
+        let originalEnd = seg.end;
+
+        // 1. Create the new junction node
+        let newLaneNode = this.addLaneNode(exactPoint.x, exactPoint.y);
+
+        // Find parent road to maintain associations
+        let parentRoad = null;
+        let pId = null;
+        for (const key in this.roads) {
+            if (this.roads[key].segmentIds && this.roads[key].segmentIds.includes(Number(segId))) {
+                parentRoad = this.roads[key];
+                pId = key;
+                newLaneNode.parentRoadId = pId;
+                break;
+            }
+        }
+
+        // 2. Step 1: Update the end of the hovered segment
+        if (originalEnd && originalEnd.SegmentId) {
+            originalEnd.SegmentId = originalEnd.SegmentId.filter(id => id != Number(segId));
+        }
+        seg.end = newLaneNode;
+        if (!newLaneNode.SegmentId) newLaneNode.SegmentId = [];
+        newLaneNode.SegmentId.push(Number(segId));
+
+        // Update its curve points
+        let curve1 = originalCurve.slice(0, splitIndex + 1);
+        curve1.push(exactPoint);
+        seg.curvePoints = curve1;
+        seg.baseCurvePoints = [...curve1];
+
+        // 3. Step 2: Create a new segment from the split point to the original end point
+        let curve2 = [exactPoint, ...originalCurve.slice(splitIndex + 1)];
+        let seg2 = new Segment(newLaneNode, "rgba(241, 37, 170, 0)", 1, originalEnd);
+        seg2.curvePoints = curve2;
+        seg2.baseCurvePoints = [...curve2];
+
+        let id2 = this.addSegment(seg2);
+        newLaneNode.SegmentId.push(id2);
+        if (originalEnd && originalEnd.SegmentId) originalEnd.SegmentId.push(id2);
+
+        // 4. Update parent road
+        if (parentRoad) {
+            parentRoad.segmentIds.push(id2);
+            // Re-update geometries for the whole road
+            if (parentRoad.start && parentRoad.start.id !== undefined) this.updateIntersectionGeometry(parentRoad.start);
+            if (parentRoad.end && parentRoad.end.id !== undefined) this.updateIntersectionGeometry(parentRoad.end);
+        }
+
+        this.updateIntersectionGeometry(newLaneNode);
+
+        return newLaneNode;
+    }
+
     #addEventListeners() {
         this.canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
@@ -124,13 +272,43 @@ class World {
             if (window.pathMode === "SPLINE") {
                 let circle = hoveredCircle;
                 if (!circle) {
-                    circle = window.segmentType === "ONE_WAY_ROAD" ? this.addLaneNode(worldPos.x, worldPos.y) : this.addCircle(worldPos.x, worldPos.y);
+                    if (this.hoveredLaneConnectionPoint) {
+                        let pt = this.hoveredLaneConnectionPoint.point;
+                        let segId = this.hoveredLaneConnectionPoint.segmentId;
+                        let idx = this.hoveredLaneConnectionPoint.segmentIndex;
+                        circle = this.splitSegmentAtPoint(segId, pt, idx);
+                        this.hoveredLaneConnectionPoint = null;
+                    } else if (this.hoveredRoadConnectionPoint) {
+                        let pt = this.hoveredRoadConnectionPoint.point;
+                        let rdId = this.hoveredRoadConnectionPoint.roadId;
+                        let segIdx = this.hoveredRoadConnectionPoint.segmentIndex;
+                        let cType = this.roads[rdId].type;
+                        circle = cType === "ONE_WAY_ROAD" ? this.addLaneNode(pt.x, pt.y) : this.addCircle(pt.x, pt.y);
+                        this.splitRoadAtPoint(rdId, circle, segIdx, pt);
+                        this.hoveredRoadConnectionPoint = null;
+                    } else {
+                        circle = window.segmentType === "ONE_WAY_ROAD" ? this.addLaneNode(worldPos.x, worldPos.y) : this.addCircle(worldPos.x, worldPos.y);
+                    }
                 }
                 this.draftSplinePoints.push(circle);
                 this.mouseTarget = { x: worldPos.x, y: worldPos.y };
             } else {
                 if (hoveredCircle) {
                     this.draftStartCircle = hoveredCircle;
+                } else if (this.hoveredLaneConnectionPoint) {
+                    let pt = this.hoveredLaneConnectionPoint.point;
+                    let segId = this.hoveredLaneConnectionPoint.segmentId;
+                    let idx = this.hoveredLaneConnectionPoint.segmentIndex;
+                    this.draftStartCircle = this.splitSegmentAtPoint(segId, pt, idx);
+                    this.hoveredLaneConnectionPoint = null;
+                } else if (this.hoveredRoadConnectionPoint) {
+                    let pt = this.hoveredRoadConnectionPoint.point;
+                    let rdId = this.hoveredRoadConnectionPoint.roadId;
+                    let segIdx = this.hoveredRoadConnectionPoint.segmentIndex;
+                    let cType = this.roads[rdId].type;
+                    this.draftStartCircle = cType === "ONE_WAY_ROAD" ? this.addLaneNode(pt.x, pt.y) : this.addCircle(pt.x, pt.y);
+                    this.splitRoadAtPoint(rdId, this.draftStartCircle, segIdx, pt);
+                    this.hoveredRoadConnectionPoint = null;
                 } else {
                     this.draftStartCircle = window.segmentType === "ONE_WAY_ROAD" ? this.addLaneNode(worldPos.x, worldPos.y) : this.addCircle(worldPos.x, worldPos.y);
                 }
@@ -140,10 +318,41 @@ class World {
 
         this.canvas.addEventListener('mousemove', (e) => {
             let worldPos = this.camera.getMousePosition(e);
+
+            this.hoveredSegmentId = window.activeTool === "BUILD" ? this.getHoveredSegment(worldPos.x, worldPos.y) : null;
+
+            if (window.activeTool === "BUILD") {
+                let hoveredCircle = this.getRelevantHoveredNode(worldPos.x, worldPos.y);
+                if (!hoveredCircle) {
+                    if (window.segmentType === "ONE_WAY_ROAD") {
+                        if (this.hoveredSegmentId !== null) {
+                            this.hoveredLaneConnectionPoint = this.getHoveredLanePoint(worldPos.x, worldPos.y);
+                            this.hoveredRoadConnectionPoint = null;
+                        } else {
+                            this.hoveredLaneConnectionPoint = null;
+                            this.hoveredRoadConnectionPoint = null;
+                        }
+                    } else {
+                        this.hoveredRoadConnectionPoint = this.getHoveredRoadPoint(worldPos.x, worldPos.y);
+                        this.hoveredLaneConnectionPoint = null;
+                    }
+                } else {
+                    this.hoveredRoadConnectionPoint = null;
+                    this.hoveredLaneConnectionPoint = null;
+                }
+            } else {
+                this.hoveredRoadConnectionPoint = null;
+                this.hoveredLaneConnectionPoint = null;
+            }
+
             if (window.pathMode === "SPLINE") {
                 let hoveredCircle = this.getRelevantHoveredNode(worldPos.x, worldPos.y);
                 if (hoveredCircle) {
                     this.mouseTarget = { x: hoveredCircle.x, y: hoveredCircle.y };
+                } else if (this.hoveredLaneConnectionPoint) {
+                    this.mouseTarget = { x: this.hoveredLaneConnectionPoint.point.x, y: this.hoveredLaneConnectionPoint.point.y };
+                } else if (this.hoveredRoadConnectionPoint) {
+                    this.mouseTarget = { x: this.hoveredRoadConnectionPoint.point.x, y: this.hoveredRoadConnectionPoint.point.y };
                 } else {
                     this.mouseTarget = { x: worldPos.x, y: worldPos.y };
                 }
@@ -152,12 +361,15 @@ class World {
                     let hoveredCircle = this.getRelevantHoveredNode(worldPos.x, worldPos.y);
                     if (hoveredCircle) {
                         this.draftRoad.end = { x: hoveredCircle.x, y: hoveredCircle.y };
+                    } else if (this.hoveredLaneConnectionPoint) {
+                        this.draftRoad.end = { x: this.hoveredLaneConnectionPoint.point.x, y: this.hoveredLaneConnectionPoint.point.y };
+                    } else if (this.hoveredRoadConnectionPoint) {
+                        this.draftRoad.end = { x: this.hoveredRoadConnectionPoint.point.x, y: this.hoveredRoadConnectionPoint.point.y };
                     } else {
                         this.draftRoad.end = { x: worldPos.x, y: worldPos.y };
                     }
                 }
             }
-            this.hoveredSegmentId = this.getHoveredSegment(worldPos.x, worldPos.y);
         });
 
         this.canvas.addEventListener('mouseup', (e) => {
@@ -168,7 +380,21 @@ class World {
 
                 let endCircle = this.getRelevantHoveredNode(worldPos.x, worldPos.y);
 
-                if (!endCircle) {
+                if (!endCircle && this.hoveredLaneConnectionPoint) {
+                    let pt = this.hoveredLaneConnectionPoint.point;
+                    let segId = this.hoveredLaneConnectionPoint.segmentId;
+                    let idx = this.hoveredLaneConnectionPoint.segmentIndex;
+                    endCircle = this.splitSegmentAtPoint(segId, pt, idx);
+                    this.hoveredLaneConnectionPoint = null;
+                } else if (!endCircle && this.hoveredRoadConnectionPoint) {
+                    let pt = this.hoveredRoadConnectionPoint.point;
+                    let rdId = this.hoveredRoadConnectionPoint.roadId;
+                    let segIdx = this.hoveredRoadConnectionPoint.segmentIndex;
+                    let cType = this.roads[rdId].type;
+                    endCircle = cType === "ONE_WAY_ROAD" ? this.addLaneNode(pt.x, pt.y) : this.addCircle(pt.x, pt.y);
+                    this.splitRoadAtPoint(rdId, endCircle, segIdx, pt);
+                    this.hoveredRoadConnectionPoint = null;
+                } else if (!endCircle) {
                     endCircle = window.segmentType === "ONE_WAY_ROAD" ? this.addLaneNode(worldPos.x, worldPos.y) : this.addCircle(worldPos.x, worldPos.y);
                 }
 
@@ -183,8 +409,21 @@ class World {
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (this.hoveredSegmentId !== null) {
-                    this.removeSegment(this.hoveredSegmentId);
+                if (window.activeTool === "BUILD") {
+                    if (this.hoveredSegmentId !== null) {
+                        let parentRoadId = null;
+                        for (const key in this.roads) {
+                            if (this.roads[key].segmentIds && this.roads[key].segmentIds.includes(Number(this.hoveredSegmentId))) {
+                                parentRoadId = key;
+                                break;
+                            }
+                        }
+                        if (parentRoadId !== null) {
+                            this.removeRoad(parentRoadId);
+                        } else {
+                            this.removeSegment(this.hoveredSegmentId);
+                        }
+                    }
                 }
             }
         });
@@ -291,6 +530,30 @@ class World {
         return null;
     }
 
+    removeNodeIfEmpty(node) {
+        if (!node || !node.SegmentId) return;
+        if (node.SegmentId.length === 0) {
+            if (node.id !== undefined && this.circle[node.id]) {
+                delete this.circle[node.id];
+                delete this.intersections[node.id];
+            } else {
+                for (const key in this.laneNodes) {
+                    if (this.laneNodes[key] === node) {
+                        delete this.laneNodes[key];
+                        break;
+                    }
+                }
+                for (const key in this.circle) {
+                    if (this.circle[key] === node) {
+                        delete this.circle[key];
+                        delete this.intersections[key];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     removeSegment(segId) {
         let seg = this.segments[segId];
         if (!seg) return;
@@ -298,9 +561,11 @@ class World {
         // Detach from graph nodes (circles/laneNodes) so pathfinding ignores it
         if (seg.start && seg.start.SegmentId) {
             seg.start.SegmentId = seg.start.SegmentId.filter(s => s != segId);
+            this.removeNodeIfEmpty(seg.start);
         }
         if (seg.end && seg.end.SegmentId) {
             seg.end.SegmentId = seg.end.SegmentId.filter(s => s != segId);
+            this.removeNodeIfEmpty(seg.end);
         }
 
         // Remove from any parent Road that might contain it
@@ -336,9 +601,11 @@ class World {
                     let ln2 = seg.end;
                     if (ln1 && ln1.SegmentId) {
                         ln1.SegmentId = ln1.SegmentId.filter(s => s !== segId);
+                        this.removeNodeIfEmpty(ln1);
                     }
                     if (ln2 && ln2.SegmentId) {
                         ln2.SegmentId = ln2.SegmentId.filter(s => s !== segId);
+                        this.removeNodeIfEmpty(ln2);
                     }
                     delete this.segments[segId];
                 }
@@ -369,6 +636,13 @@ class World {
                 { x: existingRoad.start.x, y: existingRoad.start.y },
                 { x: existingRoad.end.x, y: existingRoad.end.y }
             ];
+
+            // If the incoming road shares a start or end with existing road, skip to prevent self-intersection at corners
+            if (startCircle === existingRoad.start || startCircle === existingRoad.end ||
+                endCircle === existingRoad.start || endCircle === existingRoad.end) continue;
+
+            // Prevent newly drafted off-ramps from treating their parent LaneNode anchor as a massive intersection
+            if (startCircle.parentRoadId === key || endCircle.parentRoadId === key) continue;
 
             // Check every segment of incomingBase against every segment of existingBase
             for (let i = 0; i < incomingBase.length - 1; i++) {
@@ -448,11 +722,38 @@ class World {
     addRoad(road) {
         let id = this.roadIdCount;
         this.roads[id] = road;
+        road.id = id;
         this.roadIdCount++;
         road.segmentIds = [];
 
         let c1 = road.start;
         let c2 = road.end;
+
+        let ensureInDict = (node) => {
+            if (!node) return;
+            if (node.radius === 4) { // lane node
+                let found = false;
+                for (const key in this.laneNodes) if (this.laneNodes[key] === node) found = true;
+                if (!found) {
+                    this.laneNodes[this.laneNodeIdCount] = node;
+                    this.laneNodeIdCount++;
+                }
+            } else { // major circle
+                let found = false;
+                for (const key in this.circle) if (this.circle[key] === node) found = true;
+                if (!found) {
+                    if (node.id !== undefined) {
+                        this.circle[node.id] = node;
+                    } else {
+                        this.circle[this.circleIdCount] = node;
+                        node.id = this.circleIdCount;
+                        this.circleIdCount++;
+                    }
+                }
+            }
+        };
+        ensureInDict(c1);
+        ensureInDict(c2);
 
         let baseArray = road.curvePoints || [{ x: c1.x, y: c1.y }, { x: c2.x, y: c2.y }];
 
@@ -632,6 +933,9 @@ class World {
 
         if (connectedRoads.length === 0) {
             delete this.intersections[circle.id];
+            if (circle.SegmentId && circle.SegmentId.length === 0) {
+                this.removeNodeIfEmpty(circle);
+            }
             return;
         }
 
@@ -717,11 +1021,16 @@ class World {
                     let dFirstToEnd = Math.hypot(pFirst.x - rEnd.x, pFirst.y - rEnd.y);
                     let isBackward = dFirstToEnd < dFirstToStart;
 
-                    let cutStart = road.pullbackStart || 0;
-                    let cutEnd = road.pullbackEnd || 0;
-                    if (isBackward) {
-                        cutStart = road.pullbackEnd || 0;
-                        cutEnd = road.pullbackStart || 0;
+                    let cutStart = 0;
+                    let cutEnd = 0;
+
+                    // Only apply pullback if the lane explicitly connects to the outer road intersections!
+                    // If the node is an internal split node, seg.start/seg.end.parentRoadId === road.id will be true.
+                    if (seg.start.parentRoadId != road.id) {
+                        cutStart = isBackward ? (road.pullbackEnd || 0) : (road.pullbackStart || 0);
+                    }
+                    if (seg.end.parentRoadId != road.id) {
+                        cutEnd = isBackward ? (road.pullbackStart || 0) : (road.pullbackEnd || 0);
                     }
 
                     seg.curvePoints = this.slicePolyline(seg.baseCurvePoints, cutStart, cutEnd);
@@ -791,30 +1100,47 @@ class World {
 
         // Gather all incoming and outgoing lane nodes at this intersection
         for (let road of inter.connectedRoads) {
+            // To prevent "ghost" connections from the other end of short roads,
+            // we first identify the minimum distance from any of this road's segments to the intersection center.
+            let roadMinDist = Infinity;
+            let tempRoadLanes = [];
+
             for (let segId of road.segmentIds) {
                 let seg = this.segments[segId];
                 if (!seg || !seg.start || !seg.end || !seg.curvePoints || seg.curvePoints.length < 2) continue;
 
                 let dStart = Math.hypot(seg.start.x - circle.x, seg.start.y - circle.y);
                 let dEnd = Math.hypot(seg.end.x - circle.x, seg.end.y - circle.y);
+                let approachingDist = Math.min(dStart, dEnd);
+                
+                // Safety guard for maximum reachable distance (pullback limit + buffer)
+                let maxDist = circle.radius <= 4 ? 2 : 160;
+                if (approachingDist > maxDist) continue;
 
-                if (Math.min(dStart, dEnd) > 200) continue; // too far, safety guard
+                roadMinDist = Math.min(roadMinDist, approachingDist);
+                tempRoadLanes.push({ seg, dStart, dEnd, approachingDist });
+            }
 
-                if (dStart < dEnd) {
+            // Only keep segments that are roughly at the minimum distance for this road end.
+            for (let lane of tempRoadLanes) {
+                // If a segment end is much further away than the closest one, it belongs to the other terminal.
+                if (lane.approachingDist > roadMinDist + 20) continue;
+
+                if (lane.dStart < lane.dEnd) {
                     // Start of segment is at intersection - it points OUT of the intersection
                     outgoing.push({
-                        node: seg.start,
+                        node: lane.seg.start,
                         road: road,
-                        p1: seg.curvePoints[0],
-                        p2: seg.curvePoints[1] // For spline tangency
+                        p1: lane.seg.curvePoints[0],
+                        p2: lane.seg.curvePoints[1]
                     });
                 } else {
                     // End of segment is at intersection - it points INTO the intersection
                     incoming.push({
-                        node: seg.end,
+                        node: lane.seg.end,
                         road: road,
-                        p1: seg.curvePoints[seg.curvePoints.length - 1],
-                        p0: seg.curvePoints[seg.curvePoints.length - 2] // For spline tangency
+                        p1: lane.seg.curvePoints[lane.seg.curvePoints.length - 1],
+                        p0: lane.seg.curvePoints[lane.seg.curvePoints.length - 2]
                     });
                 }
             }
@@ -824,6 +1150,10 @@ class World {
         for (let inData of incoming) {
             for (let outData of outgoing) {
                 if (inData.road === outData.road) continue; // No U-turns
+
+                // Skip creating an internal segment if they already share the exact same node object.
+                // This happens at mid-block splits where there is no pullback gap to bridge.
+                if (inData.node === outData.node) continue;
 
                 // Create a Cubic Bezier curve inside the intersection to prevent scribbles/overshoots
                 let startP = inData.p1;
@@ -843,20 +1173,32 @@ class World {
 
                 // Calculate distance across the intersection to adjust control point strength
                 let directDist = Math.hypot(endP.x - startP.x, endP.y - startP.y);
-                let tension = 0.45; // 0.45 creates a tight reliable turn without loops
-                let controlDist = directDist * tension;
 
-                let cp1 = {
-                    x: startP.x + inDir.x * controlDist,
-                    y: startP.y + inDir.y * controlDist
-                };
+                // Angle filtering: skip connections that require a turn sharper than 120 degrees.
+                let dot = inDir.x * outDir.x + inDir.y * outDir.y;
+                if (dot < -0.5) continue;
 
-                let cp2 = {
-                    x: endP.x - outDir.x * controlDist,
-                    y: endP.y - outDir.y * controlDist
-                };
+                let curvePoints;
+                if (directDist < 1) {
+                    // For zero-length or extremely tight splits, use a simple straight line
+                    // instead of a Bezier curve to prevent visual loops or "quadratic" artifacts.
+                    curvePoints = [startP, endP];
+                } else {
+                    let tension = 0.45; // 0.45 creates a tight reliable turn without loops
+                    let controlDist = directDist * tension;
 
-                let curvePoints = this.getCubicBezierPoints(startP, cp1, cp2, endP, 0.05);
+                    let cp1 = {
+                        x: startP.x + inDir.x * controlDist,
+                        y: startP.y + inDir.y * controlDist
+                    };
+
+                    let cp2 = {
+                        x: endP.x - outDir.x * controlDist,
+                        y: endP.y - outDir.y * controlDist
+                    };
+
+                    curvePoints = this.getCubicBezierPoints(startP, cp1, cp2, endP, 0.05);
+                }
 
                 let invisColor = "rgba(0,0,0,0)";
                 let seg = new Segment(inData.node, invisColor, 1, outData.node);
@@ -928,7 +1270,34 @@ class World {
 
         // Draw visual roads (bottom layer)
         for (const key in this.roads) {
-            this.roads[key].draw(ctx);
+            let road = this.roads[key];
+            let isHovered = false;
+            // Always highlight hovered road red for deletion when BUILD mode is active
+            if (window.activeTool === "BUILD") {
+                if (this.hoveredRoadConnectionPoint !== null && this.hoveredRoadConnectionPoint.roadId === key) {
+                    isHovered = true;
+                } else if (this.hoveredSegmentId !== null && road.segmentIds && road.segmentIds.includes(Number(this.hoveredSegmentId))) {
+                    isHovered = true;
+                }
+            }
+            road.draw(ctx, isHovered);
+        }
+
+        if (window.activeTool === "BUILD" && this.hoveredRoadConnectionPoint) {
+            let rd = this.roads[this.hoveredRoadConnectionPoint.roadId];
+            if (rd) {
+                ctx.beginPath();
+                ctx.fillStyle = "rgba(46, 204, 113, 0.7)";
+                ctx.arc(this.hoveredRoadConnectionPoint.point.x, this.hoveredRoadConnectionPoint.point.y, rd.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        if (window.activeTool === "BUILD" && this.hoveredLaneConnectionPoint) {
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(46, 204, 113, 0.7)";
+            ctx.arc(this.hoveredLaneConnectionPoint.point.x, this.hoveredLaneConnectionPoint.point.y, 7.5, 0, Math.PI * 2);
+            ctx.fill();
         }
 
         if (this.draftRoad) {
@@ -940,21 +1309,17 @@ class World {
             let seg = this.segments[key];
             let isHovered = (key == this.hoveredSegmentId);
 
-            if (isHovered && window.showSegments) {
+            // Removed green segment hovering as requested by the user. 
+            // We only draw segment outlines when `window.showSegments` is true.
+            if (window.showSegments) {
                 let oldWidth = seg.width;
                 let oldColor = seg.color;
                 seg.width = 1;
-                seg.color = "#2ecc71"; // green highlight
+                seg.color = "rgba(255,255,255,0.8)";
                 seg.draw(ctx);
                 seg.width = oldWidth;
                 seg.color = oldColor;
-            } else if (window.showSegments && seg.color === "rgba(0,0,0,0)") {
-                // Keep the same segment but draw it visibly for debugging
-                let oldColor = seg.color;
-                seg.color = "rgba(255,255,255,0.8)";
-                seg.draw(ctx);
-                seg.color = oldColor;
-            } else {
+            } else if (seg.color !== "rgba(0,0,0,0)") {
                 seg.draw(ctx);
             }
 
@@ -1038,11 +1403,6 @@ class World {
             }
         }
 
-        if (window.segmentType === "ONE_WAY_ROAD") {
-            for (const key in this.laneNodes) {
-                this.laneNodes[key].draw(ctx);
-            }
-        }
 
         if (this.cars) {
             for (let i = this.cars.length - 1; i >= 0; i--) {

@@ -107,7 +107,7 @@ class Road {
         return result.length > 1 ? result : points; // return original if sliced to oblivion
     }
 
-    draw(ctx) {
+    draw(ctx, isHovered = false) {
         if (!this.start || !this.end) return;
 
         let baseArray = this.curvePoints || [ {x: this.start.x, y: this.start.y}, {x: this.end.x, y: this.end.y} ];
@@ -115,7 +115,8 @@ class Road {
         baseArray = this._slicePolyline(baseArray, this.pullbackStart || 0, this.pullbackEnd || 0);
 
         // 1. Draw solid continuous Asphalt block
-        this._drawPath(ctx, baseArray, this.color, this.width, false);
+        let drawColor = isHovered ? "#e74c3c" : this.color;
+        this._drawPath(ctx, baseArray, drawColor, this.width, false);
 
         // 2. Draw Dividers based on road type
         if (this.type === "NORMAL" || this.type === "SPLINE") {

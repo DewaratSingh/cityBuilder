@@ -27,7 +27,7 @@ class Trip {
                 const newCar = new Car(this.world, path, randomColor());
                 this.world.cars.push(newCar);
             }
-        }, 1000);
+        }, 10000);
     }
 
     getDistance(circleA, circleB) {
