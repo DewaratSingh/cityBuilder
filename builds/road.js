@@ -6,11 +6,13 @@ class Road {
         this.curvePoints = curvePoints;
         
         // Map types to visual base widths (15 pixels per physical lane + padding)
-        if (type === "ONE_WAY_ROAD") this.width = 15;
-        else if (type === "NORMAL" || type === "HIGHWAY") this.width = 30;
+        if (type === "ONE_WAY_ROAD" || type === "ONE_WAY_BRIDGE") this.width = 15;
+        else if (type === "NORMAL" || type === "HIGHWAY" || type === "BRIDGE") this.width = 30;
         else if (type === "FOUR_LANE_ROAD") this.width = 60;
         else if (type === "TWO_WAY_HIGHWAY") this.width = 70;
         else this.width = 30; // fallback
+
+        this.isBridge = type === "BRIDGE" || type === "ONE_WAY_BRIDGE";
 
         this.color = "#444"; // Asphalt color
         this.lineColor = "#fff"; // Dashed white line
@@ -155,6 +157,42 @@ class Road {
             let laneBorder2 = this._getOffsetCurve(baseArray, 17.5);
             this._drawPath(ctx, laneBorder1, this.lineColor, 2, true);
             this._drawPath(ctx, laneBorder2, this.lineColor, 2, true);
+
+        } else if (this.type === "BRIDGE") {
+            // Draw a slightly darker asphalt base
+            this._drawPath(ctx, baseArray, "#333", this.width, false);
+
+            // Draw structural side boundaries (silver rails)
+            let boundaryOffset = (this.width / 2) - 1;
+            let leftRail = this._getOffsetCurve(baseArray, -boundaryOffset);
+            let rightRail = this._getOffsetCurve(baseArray, boundaryOffset);
+            
+            // Silver railing base (slightly thicker)
+            this._drawPath(ctx, leftRail, "#bdc3c7", 4, false);
+            this._drawPath(ctx, rightRail, "#bdc3c7", 4, false);
+            
+            // Top silver line (slightly thinner for 3D effect)
+            this._drawPath(ctx, leftRail, "#ecf0f1", 1, false);
+            this._drawPath(ctx, rightRail, "#ecf0f1", 1, false);
+
+            // Dashed yellow divider down center
+            this._drawPath(ctx, baseArray, this.yellowLine, 2, true);
+        } else if (this.type === "ONE_WAY_BRIDGE") {
+            // Draw a slightly darker asphalt base
+            this._drawPath(ctx, baseArray, "#333", this.width, false);
+
+            // Draw structural side boundaries (silver rails)
+            let boundaryOffset = (this.width / 2) - 1;
+            let leftRail = this._getOffsetCurve(baseArray, -boundaryOffset);
+            let rightRail = this._getOffsetCurve(baseArray, boundaryOffset);
+            
+            // Silver railing base
+            this._drawPath(ctx, leftRail, "#bdc3c7", 4, false);
+            this._drawPath(ctx, rightRail, "#bdc3c7", 4, false);
+            
+            // Top silver line for 3D effect
+            this._drawPath(ctx, leftRail, "#ecf0f1", 1, false);
+            this._drawPath(ctx, rightRail, "#ecf0f1", 1, false);
         }
         // ONE_WAY_ROAD gets no dividers, just a clean slab of 15px asphalt.
     }

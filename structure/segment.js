@@ -4,6 +4,7 @@ class Segment {
         this.width = width;
         this.start = i;
         this.end = j;
+        this.elevation = 0; // 0 for ground, 1 for bridge
     }
 
 

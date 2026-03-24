@@ -50,6 +50,11 @@ class Car {
         for (let otherCar of this.world.cars) {
             if (otherCar === this || otherCar.finished) continue;
 
+            // Only collide if on same elevation level
+            if (otherCar.currentSegment && this.currentSegment) {
+                if (otherCar.currentSegment.elevation !== this.currentSegment.elevation) continue;
+            }
+
             // Simplified collision: distance between cars
             let dX = otherCar.x - this.x;
             let dY = otherCar.y - this.y;

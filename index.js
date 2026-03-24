@@ -57,6 +57,8 @@ const buildMenuData = [
                     { name: 'Normal Road', type: 'NORMAL', imageSrc: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=100&h=100&fit=crop' },
                     { name: 'Highway', type: 'HIGHWAY', imageSrc: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=100&h=100&fit=crop' },
                     { name: 'One Way Road', type: 'ONE_WAY_ROAD', imageSrc: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=100&h=100&fit=crop' },
+                    { name: 'Bridge', type: 'BRIDGE', imageSrc: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=100&h=100&fit=crop' },
+                    { name: 'One Lane Bridge', type: 'ONE_WAY_BRIDGE', imageSrc: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=100&h=100&fit=crop' },
                     { name: '4 Lane Road', type: 'FOUR_LANE_ROAD', imageSrc: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=100&h=100&fit=crop' },
                     { name: 'Two Way Highway', type: 'TWO_WAY_HIGHWAY', imageSrc: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=100&h=100&fit=crop' }
                 ]
